@@ -2,6 +2,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <memory.h>
 
 /* These are wrappers to allow other alloc/free functions. */
 void *cu_alloc(size_t size);
@@ -21,3 +22,17 @@ typedef struct {
 
 /* Set an alternative memory handler. */
 void cu_set_memory_handler(CUMemoryHandler *handler);
+
+static __attribute__((always_inline)) inline
+void cu_alloc_aligned(void **ptr, size_t size)
+{
+    if (__builtin_expect((posix_memalign(ptr, 16, size) != 0), 0))
+        exit(1);
+}
+
+static __attribute__((always_inline)) inline
+void cu_alloc_aligned0(void **ptr, size_t size)
+{
+    cu_alloc_aligned(ptr, size);
+    memset(*ptr, 0, size);
+}
