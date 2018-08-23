@@ -1,5 +1,6 @@
 #include "cu-memory.h"
 #include <stdlib.h>
+#include <memory.h>
 
 static CUMemoryHandler memhandler = {
     .alloc   = malloc,
@@ -12,6 +13,14 @@ void *cu_alloc(size_t size)
     void *ptr = memhandler.alloc(size);
     if (!ptr && size)
         exit(1);
+    return ptr;
+}
+
+void *cu_alloc0(size_t size)
+{
+    void *ptr = cu_alloc(size);
+    if (ptr && size)
+        memset(ptr, 0, size);
     return ptr;
 }
 

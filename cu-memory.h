@@ -5,6 +5,7 @@
 
 /* These are wrappers to allow other alloc/free functions. */
 void *cu_alloc(size_t size);
+void *cu_alloc0(size_t size);
 void cu_free(void *ptr);
 void *cu_realloc(void *ptr, size_t size);
 
