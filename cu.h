@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <cu-memory.h>
 #include <cu-list.h>
+#include <cu-queue.h>
 
 #ifdef __x86_32__
 #define CU_POINTER_TO_UINT(p) ((uint32_t)(p))
