@@ -5,7 +5,7 @@
 #include <cu-list.h>
 #include <cu-queue.h>
 
-#ifdef __x86_32__
+#if __WORDSIZE == 32
 #define CU_POINTER_TO_UINT(p) ((uint32_t)(p))
 #define CU_UINT_TO_POINTER(u) ((void *)(uint32_t)(u))
 #else
