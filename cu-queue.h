@@ -18,6 +18,9 @@ void cu_queue_init(CUQueue *queue);
 /* Clear the queue. */
 void cu_queue_clear(CUQueue *queue, CUDestroyNotifyFunc notify);
 
+/* Destroy the queue. */
+void cu_queue_destroy(CUQueue *queue, CUDestroyNotifyFunc notify);
+
 /* Push to the end of the queue. */
 void cu_queue_push_tail(CUQueue *queue, void *data);
 
