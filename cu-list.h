@@ -12,6 +12,12 @@ struct _CUList {
 /* Add data to the beginning of list and return the new head of the list. */
 CUList *cu_list_prepend(CUList *list, void *data);
 
+/* Add data to the end of the list and return the new head of the list. */
+CUList *cu_list_append(CUList *list, void *data);
+
+/* Add data after a given link and return new head of the list. */
+CUList *cu_list_insert_after(CUList *list, CUList *llink, void *data);
+
 /* Reverse list and return the new head. */
 CUList *cu_list_reverse(CUList *list);
 

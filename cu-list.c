@@ -12,6 +12,51 @@ CUList *cu_list_prepend(CUList *list, void *data)
     return entry;
 }
 
+CUList *cu_list_append(CUList *list, void *data)
+{
+    CUList *entry = cu_alloc(sizeof(CUList));
+    entry->data = data;
+    entry->next = NULL;
+
+    CUList *tmp;
+
+    if (list) {
+        tmp = list;
+        while (tmp->next) {
+            tmp = tmp->next;
+        }
+        tmp->next = entry;
+        entry->prev = tmp;
+
+        return list;
+    }
+    else {
+        entry->prev = NULL;
+        return entry;
+    }
+}
+
+CUList *cu_list_insert_after(CUList *list, CUList *llink, void *data)
+{
+    CUList *entry = cu_alloc(sizeof(CUList));
+    entry->data = data;
+    entry->prev = llink;
+
+    if (llink) {
+        entry->next = llink->next;
+        llink->next = entry;
+        if (entry->next)
+            entry->next->prev = entry;
+        return list;
+    }
+    else {
+        entry->next = list;
+        if (list)
+            list->prev = entry;
+        return entry;
+    }
+}
+
 CUList *cu_list_reverse(CUList *list)
 {
     CUList *tmp;
