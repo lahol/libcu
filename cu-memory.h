@@ -36,3 +36,23 @@ void cu_alloc_aligned0(void **ptr, size_t size)
     cu_alloc_aligned(ptr, size);
     memset(*ptr, 0, size);
 }
+
+typedef struct _CUFixedSizeMemoryPool CUFixedSizeMemoryPool;
+
+/* Create a new memory pool in which all elements have size element_size. The pool internally
+ * will be group by blocks of group_size elements. Set this to 0 to get a reasonable default
+ * size.
+ */
+CUFixedSizeMemoryPool *cu_fixed_size_memory_pool_new(size_t element_size, size_t group_size);
+
+/* Clear all data from the pool. */
+void cu_fixed_size_memory_pool_clear(CUFixedSizeMemoryPool *pool);
+
+/* Destroy the pool. */
+void cu_fixed_size_memory_pool_destroy(CUFixedSizeMemoryPool *pool);
+
+/* Get a new element from the pool. */
+void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool);
+
+/* Return an element to the pool. */
+void cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr);
