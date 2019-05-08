@@ -1,6 +1,8 @@
 /* A generic doubly-linked list. */
 #pragma once
 
+#include <cu-types.h>
+
 typedef struct _CUList CUList;
 
 struct _CUList {
@@ -25,5 +27,4 @@ CUList *cu_list_reverse(CUList *list);
 CUList *cu_list_delete_link(CUList *list, CUList *link);
 
 /* Free the whole list. Call notify for each data element. */
-typedef void (*CUDestroyNotifyFunc)(void *);
 void cu_list_free_full(CUList *list, CUDestroyNotifyFunc notify);
