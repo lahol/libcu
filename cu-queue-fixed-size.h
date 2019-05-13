@@ -33,7 +33,7 @@ void cu_queue_fixed_size_destroy(CUQueueFixedSize *queue, CUDestroyNotifyFunc no
 void cu_queue_fixed_size_push_tail(CUQueueFixedSize *queue, void *data);
 
 /* Pop from the head of the queue. */
-void *cu_queue_fixed_size_pop_head(CUQueueFixedSize *queue);
+bool cu_queue_fixed_size_pop_head(CUQueueFixedSize *queue, void *output);
 
 /* Peek the head of the queue. */
-void *cu_queue_fixed_size_peek_head(CUQueueFixedSize *queue);
+bool cu_queue_fixed_size_peek_head(CUQueueFixedSize *queue, void *output);

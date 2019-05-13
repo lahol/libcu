@@ -104,22 +104,38 @@ void BUILD_FUNC(push_tail)(QUEUE_TYPE *queue, void *data)
 }
 
 /* Pop from the head of the queue. */
-void *BUILD_FUNC(pop_head)(QUEUE_TYPE *queue)
+#if QUEUE_FIXED_SIZE
+bool
+#else
+void *
+#endif
+BUILD_FUNC(pop_head)(QUEUE_TYPE *queue
+#if QUEUE_FIXED_SIZE
+        , void *output
+#endif
+        )
 {
     if (cu_unlikely(!queue))
         return NULL;
 
+#if QUEUE_FIXED_SIZE
+    bool have_data = false;
+#else
     void *data = NULL;
+#endif
     CUList *tmp;
 
     QUEUE_LOCK(queue);
 
     if (queue->head) {
         tmp = queue->head->next;
-        data = queue->head->data;
 #if QUEUE_FIXED_SIZE
+        if (output)
+            memcpy(output, queue->head->data, queue->element_size);
         cu_fixed_size_memory_pool_free(queue->pool, queue->head);
+        have_data = true;
 #else
+        data = queue->head->data;
         cu_free(queue->head);
 #endif
 
@@ -134,16 +150,40 @@ void *BUILD_FUNC(pop_head)(QUEUE_TYPE *queue)
 
     QUEUE_UNLOCK(queue);
 
+#if QUEUE_FIXED_SIZE
+    return have_data;
+#else
     return data;
+#endif
 }
 
 /* Peek the head of the queue. */
-void *BUILD_FUNC(peek_head)(QUEUE_TYPE *queue)
+#if QUEUE_FIXED_SIZE
+bool
+#else
+void *
+#endif
+BUILD_FUNC(peek_head)(QUEUE_TYPE *queue
+#if QUEUE_FIXED_SIZE
+        , void *output
+#endif
+        )
 {
+#if QUEUE_FIXED_SIZE
+    bool result = false;
+#else
     void *result = NULL;
+#endif
     QUEUE_LOCK(queue);
-    if (queue && queue->head)
+    if (queue && queue->head) {
+#if QUEUE_FIXED_SIZE
+        result = true;
+        if (output)
+            memcpy(output, queue->head->data, queue->element_size);
+#else
         result = queue->head->data;
+#endif
+    }
     QUEUE_UNLOCK(queue);
     return result;
 }
