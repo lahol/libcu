@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS += -Wall -O3 -I.
+CFLAGS += -Wall -O3 -I. -g
 LIBS=-pthread
 
 PREFIX := /usr

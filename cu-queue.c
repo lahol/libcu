@@ -37,7 +37,7 @@ void BUILD_FUNC(init)(QUEUE_TYPE *queue
     pthread_mutex_init(&queue->lock, NULL);
 #endif
 #if QUEUE_FIXED_SIZE
-    queue->pool = cu_fixed_size_memory_pool_new(element_size + sizeof(CUQueueFixedSize), group_size);
+    queue->pool = cu_fixed_size_memory_pool_new(element_size + sizeof(CUList), group_size);
     queue->element_size = element_size;
 #endif
 }
@@ -80,7 +80,7 @@ void BUILD_FUNC(push_tail)(QUEUE_TYPE *queue, void *data)
         return;
 #if QUEUE_FIXED_SIZE
     CUList *entry = cu_fixed_size_memory_pool_alloc(queue->pool);
-    entry->data = entry + sizeof(CUQueueFixedSize);
+    entry->data = entry + sizeof(CUList);
     memcpy(entry->data, data, queue->element_size);
 #else
     CUList *entry = cu_alloc(sizeof(CUList));

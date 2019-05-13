@@ -3,6 +3,7 @@
 #include "cu.h"
 #include "cu-fixed-stack.h"
 #include <stdbool.h>
+#include <stdio.h>
 
 typedef struct _CUBTreeNode CUBTreeNode;
 struct _CUBTreeNode {
@@ -216,6 +217,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
         if (Q == NULL) { /* We found the right place */
             if (create_node) {
                 Q = (CUBTreeNode *)cu_fixed_size_memory_pool_alloc(tree->node_mem);
+                memset(Q, 0, sizeof(CUBTreeNode));
                 Q->key = key;
                 *link = Q;
                 _cu_btree_rebalance(tree, S, Q, T, key);
@@ -231,6 +233,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
 
     if (create_node) {
         Q = (CUBTreeNode *)cu_fixed_size_memory_pool_alloc(tree->node_mem);
+        memset(Q, 0, sizeof(CUBTreeNode));
         Q->key = key;
         S = Q;
         tree->root = Q;
