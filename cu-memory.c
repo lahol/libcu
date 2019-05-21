@@ -67,12 +67,12 @@ void cu_set_memory_handler(CUMemoryHandler *handler)
 #define MEMORY_GROUP_HEADER_SIZE       16
 
 #define MEMORY_GROUP_HEADER_HEAD(group) (*((uint32_t *)((group))))
-#define MEMORY_GROUP_HEADER_NUM_INIT(group) (*((uint32_t *)((group) + 4)))
-#define MEMORY_GROUP_HEADER_NUM_FREE(group) (*((uint32_t *)((group) + 8)))
+#define MEMORY_GROUP_HEADER_NUM_INIT(group) (*((uint32_t *)((void *)(group) + 4)))
+#define MEMORY_GROUP_HEADER_NUM_FREE(group) (*((uint32_t *)((void *)(group) + 8)))
 
-#define MEMORY_GROUP_ELEMENT(group, block, element_size) (*((uint32_t *)((group) +\
+#define MEMORY_GROUP_ELEMENT(group, block, element_size) (*((uint32_t *)((void *)(group) +\
                 MEMORY_GROUP_HEADER_SIZE + (block) * (element_size))))
-#define MEMORY_GROUP_ELEMENT_PTR(group, block, element_size) ((void *)((group) +\
+#define MEMORY_GROUP_ELEMENT_PTR(group, block, element_size) ((void *)((void *)(group) +\
                 MEMORY_GROUP_HEADER_SIZE + (block) * (element_size)))
 
 struct _CUFixedSizeMemoryPool {
