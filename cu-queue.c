@@ -2,6 +2,11 @@
 #include "cu.h"
 #include <memory.h>
 
+#if DEBUG
+#include <stdio.h>
+#include <inttypes.h>
+#endif
+
 #define CONCAT_INTERMEDIATE(a,b) a##b
 #define CONCAT(a,b) CONCAT_INTERMEDIATE(a,b)
 #define BUILD_FUNC(f) CONCAT(QUEUE_PREFIX, _ ## f)
@@ -80,7 +85,8 @@ void BUILD_FUNC(push_tail)(QUEUE_TYPE *queue, void *data)
         return;
 #if QUEUE_FIXED_SIZE
     CUList *entry = cu_fixed_size_memory_pool_alloc(queue->pool);
-    entry->data = entry + sizeof(CUList);
+    /* Set data pointer to the end of the structure. */
+    entry->data = entry + 1;
     memcpy(entry->data, data, queue->element_size);
 #else
     CUList *entry = cu_alloc(sizeof(CUList));
