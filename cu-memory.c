@@ -117,7 +117,7 @@ CUFixedSizeMemoryPool *cu_fixed_size_memory_pool_new(size_t element_size, size_t
     if (pool->element_size == 0)
         pool->element_size = 8;
     if (group_size == 0)
-        pool->group_size = 4096 / element_size;
+        pool->group_size = (4096 - MEMORY_GROUP_HEADER_SIZE) / element_size;
     else
         pool->group_size = group_size;
 
