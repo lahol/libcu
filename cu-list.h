@@ -26,5 +26,15 @@ CUList *cu_list_reverse(CUList *list);
 /* Delete some link from list and return the new head. */
 CUList *cu_list_delete_link(CUList *list, CUList *link);
 
+/* Get the last element in the list. */
+CUList *cu_list_last(CUList *list);
+
+/* Just for symmetry, get the first element of the list. */
+CUList *cu_list_first(CUList *list);
+
+/* Convenience macros for previous and next list element. */
+#define cu_list_previous(list) ((list) ? (list)->prev : NULL)
+#define cu_list_next(list) ((list) ? (list)->next : NULL)
+
 /* Free the whole list. Call notify for each data element. */
 void cu_list_free_full(CUList *list, CUDestroyNotifyFunc notify);

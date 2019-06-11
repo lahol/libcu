@@ -71,6 +71,22 @@ CUList *cu_list_reverse(CUList *list)
     return new_head;
 }
 
+/* Get the last element in the list. */
+CUList *cu_list_last(CUList *list)
+{
+    CUList *last = list;
+    while (cu_list_next(last)) {
+        last = last->next;
+    }
+    return last;
+}
+
+/* Just for symmetry, get the first element of the list. */
+CUList *cu_list_first(CUList *list)
+{
+    return list;
+}
+
 void cu_list_free_full(CUList *list, CUDestroyNotifyFunc notify)
 {
     CUList *tmp;
