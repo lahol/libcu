@@ -14,6 +14,7 @@
 #define CU_UINT_TO_POINTER(u) ((void *)(uint64_t)(uint32_t)(u))
 #endif
 
+#define ROUND_TO_4(n)  ((((n) + 3)  >> 2) << 2)
 #define ROUND_TO_8(n)  ((((n) + 7)  >> 3) << 3)
 #define ROUND_TO_16(n) ((((n) + 15) >> 4) << 4)
 
