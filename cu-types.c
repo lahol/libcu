@@ -150,7 +150,6 @@ void cu_blob_init(CUBlob *blob)
 
 void cu_blob_clear(CUBlob *blob)
 {
-    CUList *tmp;
     if (cu_unlikely(!blob))
         return;
     cu_list_free_full(blob->metadata, (CUDestroyNotifyFunc)cu_free);
@@ -183,42 +182,42 @@ void cu_blob_append(CUBlob *blob, CUType type, void *value)
         case CU_TYPE_UINT:
             _cu_blob_grow_if_needed(blob, 4);
 
-            memcpy(&blob->data[entry->offset], value, 4);
+            memcpy(blob->data + entry->offset, value, 4);
 
             blob->used_size += 4;
             break;
         case CU_TYPE_UINT64:
             _cu_blob_grow_if_needed(blob, 8);
 
-            memcpy(&blob->data[entry->offset], value, 8);
+            memcpy(blob->data + entry->offset, value, 8);
 
             blob->used_size += 8;
             break;
         case CU_TYPE_INT:
             _cu_blob_grow_if_needed(blob, 4);
 
-            memcpy(&blob->data[entry->offset], value, 4);
+            memcpy(blob->data + entry->offset, value, 4);
 
             blob->used_size += 4;
             break;
         case CU_TYPE_INT64:
             _cu_blob_grow_if_needed(blob, 8);
 
-            memcpy(&blob->data[entry->offset], value, 8);
+            memcpy(blob->data + entry->offset, value, 8);
 
             blob->used_size += 8;
             break;
         case CU_TYPE_DOUBLE:
             _cu_blob_grow_if_needed(blob, 8);
 
-            memcpy(&blob->data[entry->offset], value, 8);
+            memcpy(blob->data + entry->offset, value, 8);
 
             blob->used_size += 8;
             break;
         case CU_TYPE_POINTER:
             _cu_blob_grow_if_needed(blob, sizeof(void *));
 
-            memcpy(&blob->data[entry->offset], &value, sizeof(void *));
+            memcpy(blob->data + entry->offset, &value, sizeof(void *));
 
             blob->used_size += sizeof(void *);
             break;
@@ -228,10 +227,10 @@ void cu_blob_append(CUBlob *blob, CUType type, void *value)
             required = 4 + ROUND_TO_4(real_length);
             _cu_blob_grow_if_needed(blob, required);
 
-            memcpy(&blob->data[entry->offset], &real_length, 4);
-            memcpy(&blob->data[entry->offset + 4], (char *)value, real_length);
+            memcpy(blob->data + entry->offset, &real_length, 4);
+            memcpy(blob->data + entry->offset + 4, (char *)value, real_length);
             if (required - real_length - 4) {
-                memset(&blob->data[entry->offset + 4 + real_length], 0, required - real_length - 4);
+                memset(blob->data + entry->offset + 4 + real_length, 0, required - real_length - 4);
             }
 
             blob->used_size += required;
@@ -244,11 +243,11 @@ void cu_blob_append(CUBlob *blob, CUType type, void *value)
 
             tmp = ((CUArray *)value)->member_type;
 
-            memcpy(&blob->data[entry->offset], &tmp, 4);
-            memcpy(&blob->data[entry->offset + 4], &((CUArray *)value)->length, 4);
-            memcpy(&blob->data[entry->offset + 8], ((CUArray *)value)->data, real_length);
+            memcpy(blob->data + entry->offset, &tmp, 4);
+            memcpy(blob->data + entry->offset + 4, &((CUArray *)value)->length, 4);
+            memcpy(blob->data + entry->offset + 8, ((CUArray *)value)->data, real_length);
             if (required - real_length - 8) {
-                memset(&blob->data[entry->offset + 8 + real_length], 0, required - real_length - 8);
+                memset(blob->data + entry->offset + 8 + real_length, 0, required - real_length - 8);
             }
 
             blob->used_size += required;
@@ -317,6 +316,7 @@ size_t cu_blob_serialize(char **buffer, size_t buflen, CUBlob *blob)
 
     /* Actually, the data is already serialized. We just had to preserve the signature.
      * So, we just copy the rest of the data. */
+    memcpy(*buffer + signature_length, blob->data, blob->used_size);
     
     return buflen;
 
@@ -326,6 +326,9 @@ error:
 
 void cu_blob_deserialize(CUBlob *blob, char *buffer, size_t buflen)
 {
+    /* The signature is a multiple of 4 bytes. Therefore, we read as long as there is no terminating zero.
+     * Afterwards, we parse the actual data, especially arrays and strings, which differ in length.
+     */
 }
 
 void cu_blob_foreach(CUBlob *blob, CUBlobForeachFunc func, void *userdata)
