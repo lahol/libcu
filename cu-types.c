@@ -160,9 +160,67 @@ void cu_blob_clear(CUBlob *blob)
 static void _cu_blob_grow_if_needed(CUBlob *blob, size_t required)
 {
     if (blob->used_size + required < blob->alloc_size) {
-        blob->alloc_size += CU_BLOB_CHUNK_SIZE;
+        blob->alloc_size = CU_BLOB_ROUND_TO_CHUNK_SIZE(blob->used_size + required);
         blob->data = cu_realloc(blob->data, blob->alloc_size);
     }
+}
+
+static size_t inline _cu_blob_write_uint32(CUBlob *blob, size_t offset, uint32_t *value)
+{
+    memcpy(blob->data + offset, value, 4);
+    return 4;
+}
+
+static size_t inline _cu_blob_write_uint64(CUBlob *blob, size_t offset, uint64_t *value)
+{
+    memcpy(blob->data + offset, value, 8);
+    return 8;
+}
+
+static size_t inline _cu_blob_write_int32(CUBlob *blob, size_t offset, int32_t *value)
+{
+    memcpy(blob->data + offset, value, 4);
+    return 4;
+}
+
+static size_t inline _cu_blob_write_int64(CUBlob *blob, size_t offset, int64_t *value)
+{
+    memcpy(blob->data + offset, value, 8);
+    return 8;
+}
+
+static size_t inline _cu_blob_write_double(CUBlob *blob, size_t offset, double *value)
+{
+    memcpy(blob->data + offset, value, 8);
+    return 8;
+}
+
+static size_t inline _cu_blob_write_pointer(CUBlob *blob, size_t offset, void *value)
+{
+    memcpy(blob->data + offset, &value, sizeof(void *));
+    return sizeof(void *);
+}
+
+static size_t inline _cu_blob_write_string(CUBlob *blob, size_t offset, uint32_t length, char *value)
+{
+    memcpy(blob->data + offset, &length, 4);
+    memcpy(blob->data + offset + 4, value, length);
+
+    if (ROUND_TO_4(length) > length)
+        memset(blob->data + offset + 4 + length, 0, ROUND_TO_4(length) - length);
+
+    return (4 + ROUND_TO_4(length));
+}
+
+static size_t inline _cu_blob_write_array(CUBlob *blob, size_t offset, uint32_t length, uint32_t type, void *value)
+{
+    memcpy(blob->data + offset, &type, 4);
+    memcpy(blob->data + offset + 4, &length, 4);
+    memcpy(blob->data + offset + 8, value, length);
+    if (ROUND_TO_4(length) - length)
+        memset(blob->data + offset + 8 + length, 0, ROUND_TO_4(length) - length);
+
+    return (8 + ROUND_TO_4(length));
 }
 
 void cu_blob_append(CUBlob *blob, CUType type, void *value)
@@ -176,50 +234,31 @@ void cu_blob_append(CUBlob *blob, CUType type, void *value)
 
     size_t required = 0;
     uint32_t real_length;
-    uint32_t tmp;
 
     switch (type) {
         case CU_TYPE_UINT:
             _cu_blob_grow_if_needed(blob, 4);
-
-            memcpy(blob->data + entry->offset, value, 4);
-
-            blob->used_size += 4;
+            blob->used_size += _cu_blob_write_uint32(blob, entry->offset, value);
             break;
         case CU_TYPE_UINT64:
             _cu_blob_grow_if_needed(blob, 8);
-
-            memcpy(blob->data + entry->offset, value, 8);
-
-            blob->used_size += 8;
+            blob->used_size += _cu_blob_write_uint64(blob, entry->offset, value);
             break;
         case CU_TYPE_INT:
             _cu_blob_grow_if_needed(blob, 4);
-
-            memcpy(blob->data + entry->offset, value, 4);
-
-            blob->used_size += 4;
+            blob->used_size += _cu_blob_write_int32(blob, entry->offset, value);
             break;
         case CU_TYPE_INT64:
             _cu_blob_grow_if_needed(blob, 8);
-
-            memcpy(blob->data + entry->offset, value, 8);
-
-            blob->used_size += 8;
+            blob->used_size += _cu_blob_write_int64(blob, entry->offset, value);
             break;
         case CU_TYPE_DOUBLE:
             _cu_blob_grow_if_needed(blob, 8);
-
-            memcpy(blob->data + entry->offset, value, 8);
-
-            blob->used_size += 8;
+            blob->used_size += _cu_blob_write_double(blob, entry->offset, value);
             break;
         case CU_TYPE_POINTER:
             _cu_blob_grow_if_needed(blob, sizeof(void *));
-
-            memcpy(blob->data + entry->offset, &value, sizeof(void *));
-
-            blob->used_size += sizeof(void *);
+            blob->used_size += _cu_blob_write_pointer(blob, entry->offset, value);
             break;
         case CU_TYPE_STRING:
             /* 4 byte strlen + string, filled up to multiple of 4 */
@@ -227,30 +266,17 @@ void cu_blob_append(CUBlob *blob, CUType type, void *value)
             required = 4 + ROUND_TO_4(real_length);
             _cu_blob_grow_if_needed(blob, required);
 
-            memcpy(blob->data + entry->offset, &real_length, 4);
-            memcpy(blob->data + entry->offset + 4, (char *)value, real_length);
-            if (required - real_length - 4) {
-                memset(blob->data + entry->offset + 4 + real_length, 0, required - real_length - 4);
-            }
-
-            blob->used_size += required;
+            blob->used_size += _cu_blob_write_string(blob, entry->offset, real_length, (char *)value);
             break;
         case CU_TYPE_ARRAY:
-            /* length, type, data */
+            /* type, length, data */
             real_length = ((CUArray *)value)->length * _cu_element_sizes[((CUArray *)value)->member_type];
             required = 8 + ROUND_TO_4(real_length);
             _cu_blob_grow_if_needed(blob, required);
 
-            tmp = ((CUArray *)value)->member_type;
-
-            memcpy(blob->data + entry->offset, &tmp, 4);
-            memcpy(blob->data + entry->offset + 4, &((CUArray *)value)->length, 4);
-            memcpy(blob->data + entry->offset + 8, ((CUArray *)value)->data, real_length);
-            if (required - real_length - 8) {
-                memset(blob->data + entry->offset + 8 + real_length, 0, required - real_length - 8);
-            }
-
-            blob->used_size += required;
+            blob->used_size += _cu_blob_write_array(blob, entry->offset, real_length,
+                                                    ((CUArray *)value)->member_type,
+                                                    ((CUArray *)value)->data);
             break;
         default:
             cu_free(entry);
@@ -329,6 +355,88 @@ void cu_blob_deserialize(CUBlob *blob, char *buffer, size_t buflen)
     /* The signature is a multiple of 4 bytes. Therefore, we read as long as there is no terminating zero.
      * Afterwards, we parse the actual data, especially arrays and strings, which differ in length.
      */
+    if (cu_unlikely(!blob || !buffer))
+        return;
+
+    /* Determine the signature length. */
+    size_t j;
+    size_t signature_length;
+    for (j = 0; j < buflen && buffer[j] != '\0'; ++j) {
+        /* nothing to do, just advance the pointer */
+    }
+    signature_length = ROUND_TO_4(j + 1);
+
+    /* Initially grow the data buffer to the buffer size, excluding the signature. */
+    _cu_blob_grow_if_needed(blob, buflen - signature_length);
+
+    CUBlobEntry *entry;
+    blob->used_size = 0;
+    void *data = buffer + signature_length;
+    size_t size;
+    uint32_t length;
+    uint32_t type;
+
+    for (j = 0; buffer[j] != '\0'; ++j) {
+        entry = cu_alloc(sizeof(CUBlobEntry *));
+        entry->offset = blob->used_size;
+        switch (buffer[j]) {
+            case 'u':
+                entry->type = CU_TYPE_UINT;
+                size = _cu_blob_write_uint32(blob, entry->offset, data);
+                data += size;
+                blob->used_size += size;
+                break;
+            case 'i':
+                entry->type = CU_TYPE_INT;
+                size = _cu_blob_write_int32(blob, entry->offset, data);
+                data += size;
+                blob->used_size += size;
+                break;
+            case 'U':
+                entry->type = CU_TYPE_UINT64;
+                size = _cu_blob_write_uint64(blob, entry->offset, data);
+                data += size;
+                blob->used_size += size;
+                break;
+            case 'I':
+                entry->type = CU_TYPE_INT64;
+                size = _cu_blob_write_int64(blob, entry->offset, data);
+                data += size;
+                blob->used_size += size;
+                break;
+            case 'f':
+                entry->type = CU_TYPE_DOUBLE;
+                size = _cu_blob_write_double(blob, entry->offset, data);
+                data += size;
+                blob->used_size += size;
+                break;
+            case 'p':
+                entry->type = CU_TYPE_POINTER;
+                size = _cu_blob_write_pointer(blob, entry->offset, data);
+                data += size;
+                blob->used_size += size;
+                break;
+            case 's':
+                memcpy(&length, data, 4);
+                size = _cu_blob_write_string(blob, entry->offset, length, data + 4);
+                data += size;
+                blob->used_size += size;
+                break;
+            case 'a':
+                memcpy(&type, data, 4);
+                memcpy(&length, data + 4, 4);
+                size = _cu_blob_write_array(blob, entry->offset, length, type, data + 8);
+                data += size;
+                blob->used_size += size;
+                break;
+            default:
+                cu_free(entry);
+                continue;
+        }
+
+        blob->metadata = cu_list_prepend(blob->metadata, entry);
+        ++blob->member_count;
+    }
 }
 
 void cu_blob_foreach(CUBlob *blob, CUBlobForeachFunc func, void *userdata)
