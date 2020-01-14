@@ -26,6 +26,9 @@ CUList *cu_list_reverse(CUList *list);
 /* Delete some link from list and return the new head. */
 CUList *cu_list_delete_link(CUList *list, CUList *link);
 
+/* Remove first element matching the data from the list and return the new head. */
+CUList *cu_list_remove(CUList *list, void *data);
+
 /* Get the last element in the list. */
 CUList *cu_list_last(CUList *list);
 

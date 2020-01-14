@@ -115,3 +115,14 @@ CUList *cu_list_delete_link(CUList *list, CUList *link)
 
     return list;
 }
+
+CUList *cu_list_remove(CUList *list, void *data)
+{
+    CUList *tmp;
+    for (tmp = list; tmp; tmp = tmp->next) {
+        if (tmp->data == data)
+            return cu_list_delete_link(list, tmp);
+    }
+    return list;
+}
+
