@@ -5,6 +5,7 @@
 #include <cu-list.h>
 #include <cu-queue.h>
 #include <cu-stack.h>
+#include <cu-timer.h>
 
 #if __WORDSIZE == 32
 #define CU_POINTER_TO_UINT(p) ((uint32_t)(p))
