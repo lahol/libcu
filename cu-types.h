@@ -10,6 +10,10 @@ typedef void (*CUDestroyNotifyFunc)(void *);
  * return < 0 if a > b, > 0 if a < b */
 typedef int (*CUCompareDataFunc)(void *, void *, void *);
 
+/* a, b,
+ * return < 0 if a > b, > 0 if a < b, 0 if a == b */
+typedef int (*CUCompareFunc)(void *, void *);
+
 /* key, value, data */
 typedef bool (*CUTraverseFunc)(void *, void *, void *);
 

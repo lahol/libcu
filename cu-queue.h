@@ -29,3 +29,6 @@ void *cu_queue_pop_head(CUQueue *queue);
 
 /* Peek the head of the queue. */
 void *cu_queue_peek_head(CUQueue *queue);
+
+/* Pop a custom element from the queue. */
+void *cu_queue_pop_custom(CUQueue *queue, CUCompareFunc compare, void *userdata);

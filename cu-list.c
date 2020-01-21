@@ -126,3 +126,19 @@ CUList *cu_list_remove(CUList *list, void *data)
     return list;
 }
 
+CUList *cu_list_find_custom(CUList *list, void *data, CUCompareFunc compare)
+{
+    CUList *tmp;
+    for (tmp = list; tmp; tmp = tmp->next) {
+        if (compare(tmp->data, data) == 0)
+            return tmp;
+    }
+
+    return NULL;
+}
+
+CUList *cu_list_remove_custom(CUList *list, void *data, CUCompareFunc compare)
+{
+    CUList *llink = cu_list_find_custom(list, data, compare);
+    return cu_list_delete_link(list, llink);
+}

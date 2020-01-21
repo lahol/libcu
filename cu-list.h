@@ -35,6 +35,14 @@ CUList *cu_list_last(CUList *list);
 /* Just for symmetry, get the first element of the list. */
 CUList *cu_list_first(CUList *list);
 
+/* Find an element in the list.
+ * data is passed as the second element to compare. */
+CUList *cu_list_find_custom(CUList *list, void *data, CUCompareFunc compare);
+
+/* Delete an element matching a criterion and return new head.
+ * data is passed as the second element to compare. */
+CUList *cu_list_remove_custom(CUList *list, void *data, CUCompareFunc compare);
+
 /* Convenience macros for previous and next list element. */
 #define cu_list_previous(list) ((list) ? (list)->prev : NULL)
 #define cu_list_next(list) ((list) ? (list)->next : NULL)

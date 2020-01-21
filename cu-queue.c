@@ -122,7 +122,11 @@ BUILD_FUNC(pop_head)(QUEUE_TYPE *queue
         )
 {
     if (cu_unlikely(!queue))
+#if QUEUE_FIXED_SIZE
+        return false;
+#else
         return NULL;
+#endif
 
 #if QUEUE_FIXED_SIZE
     bool have_data = false;
@@ -192,4 +196,65 @@ BUILD_FUNC(peek_head)(QUEUE_TYPE *queue
     }
     QUEUE_UNLOCK(queue);
     return result;
+}
+
+/* Pop some element matching a criterion. */
+#if QUEUE_FIXED_SIZE
+bool
+#else
+void *
+#endif
+BUILD_FUNC(pop_custom)(QUEUE_TYPE *queue, CUCompareFunc compare, void *userdata
+#if QUEUE_FIXED_SIZE
+        , void *output
+#endif
+        )
+{
+    if (cu_unlikely(!queue))
+#if QUEUE_FIXED_SIZE
+        return false;
+#else
+        return NULL;
+#endif
+
+#if QUEUE_FIXED_SIZE
+        bool have_data = false;
+#else
+        void *data = NULL;
+#endif
+        CUList *tmp;
+
+        QUEUE_LOCK(queue);
+
+        for (tmp = queue->head; tmp; tmp = tmp->next) {
+            if (compare(tmp->data, userdata) == 0) {
+                if (tmp->prev)
+                    tmp->prev = tmp->next;
+                else
+                    queue->head = tmp->next;
+                if (tmp->next)
+                    tmp->next = tmp->prev;
+                else
+                    queue->tail = tmp->prev;
+#if QUEUE_FIXED_SIZE
+                if (output)
+                    memcpy(output, tmp->data, queue->element_size);
+                cu_fixed_size_memory_pool_free(queue->pool, tmp);
+                have_data = true;
+#else
+                data = tmp->data;
+                cu_free(tmp);
+#endif
+                --queue->length;
+                break;
+            }
+        }
+
+        QUEUE_UNLOCK(queue);
+
+#if QUEUE_FIXED_SIZE
+        return have_data;
+#else
+        return data;
+#endif
 }
