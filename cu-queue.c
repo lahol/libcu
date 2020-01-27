@@ -229,11 +229,11 @@ BUILD_FUNC(pop_custom)(QUEUE_TYPE *queue, CUCompareFunc compare, void *userdata
         for (tmp = queue->head; tmp; tmp = tmp->next) {
             if (compare(tmp->data, userdata) == 0) {
                 if (tmp->prev)
-                    tmp->prev = tmp->next;
+                    tmp->prev->next = tmp->next;
                 else
                     queue->head = tmp->next;
                 if (tmp->next)
-                    tmp->next = tmp->prev;
+                    tmp->next->prev = tmp->prev;
                 else
                     queue->tail = tmp->prev;
 #if QUEUE_FIXED_SIZE
