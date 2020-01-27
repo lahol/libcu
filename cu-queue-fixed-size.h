@@ -40,3 +40,6 @@ bool cu_queue_fixed_size_peek_head(CUQueueFixedSize *queue, void *output);
 
 /* Pop a custom element from the queue. */
 bool cu_queue_fixed_size_pop_custom(CUQueueFixedSize *queue, CUCompareFunc compare, void *userdata, void *output);
+
+/* Remove a link from the queue. */
+void cu_queue_fixed_size_delete_link(CUQueueFixedSize *queue, CUList *link);

@@ -258,3 +258,29 @@ BUILD_FUNC(pop_custom)(QUEUE_TYPE *queue, CUCompareFunc compare, void *userdata
         return data;
 #endif
 }
+
+void BUILD_FUNC(delete_link)(QUEUE_TYPE *queue, CUList *link)
+{
+    if (cu_unlikely(!queue || !link))
+        return;
+
+    QUEUE_LOCK(queue);
+
+    if (link->prev)
+        link->prev->next = link->next;
+    else
+        queue->head = link->next;
+    if (link->next)
+        link->next->prev = link->prev;
+    else
+        queue->tail = link->prev;
+#if QUEUE_FIXED_SIZE
+    cu_fixed_size_memory_pool_free(queue->pool, link);
+#else
+    cu_free(link);
+#endif
+
+    --queue->length;
+
+    QUEUE_UNLOCK(queue);
+}

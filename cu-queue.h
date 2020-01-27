@@ -32,3 +32,6 @@ void *cu_queue_peek_head(CUQueue *queue);
 
 /* Pop a custom element from the queue. */
 void *cu_queue_pop_custom(CUQueue *queue, CUCompareFunc compare, void *userdata);
+
+/* Remove a link from the queue. */
+void cu_queue_delete_link(CUQueue *queue, CUList *link);
