@@ -7,6 +7,8 @@
 struct _CUTimer {
     CUTimerCallback callback;
     void *callback_data;
+
+    uint32_t interval;
     timer_t timerid;
 
     atomic_int reference_count;
@@ -36,11 +38,23 @@ void _cu_timer_handle(CUTimer *timer)
         cu_timer_stop(timer);
 }
 
+int _cu_timer_reset_expire(CUTimer *timer)
+{
+    struct itimerspec its;
+    its.it_value.tv_sec = timer->interval;
+    its.it_value.tv_nsec = 0;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    return timer_settime(timer->timerid, 0, &its, NULL);
+}
+
 CUTimer *cu_timer_start(uint32_t interval, CUTimerCallback cb, void *userdata)
 {
     CUTimer *timer = cu_alloc0(sizeof(CUTimer));
     timer->callback = cb;
     timer->callback_data = userdata;
+    timer->interval = interval;
     atomic_store(&timer->reference_count, 1);
 
     struct sigevent se;
@@ -57,19 +71,20 @@ CUTimer *cu_timer_start(uint32_t interval, CUTimerCallback cb, void *userdata)
         return NULL;
     }
 
-    struct itimerspec its;
-    its.it_value.tv_sec = interval;
-    its.it_value.tv_nsec = 0;
-    its.it_interval.tv_sec = its.it_value.tv_sec;
-    its.it_interval.tv_nsec = its.it_value.tv_nsec;
-
-    if (timer_settime(timer->timerid, 0, &its, NULL) == -1) {
+    if (_cu_timer_reset_expire(timer) == -1) {
         timer_delete(timer->timerid);
         cu_timer_unref(timer);
         return NULL;
     }
 
     return timer;
+}
+
+void cu_timer_reset(CUTimer *timer)
+{
+    if (cu_unlikely(timer == NULL))
+        return;
+    _cu_timer_reset_expire(timer);
 }
 
 void cu_timer_stop(CUTimer *timer)
