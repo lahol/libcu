@@ -284,3 +284,20 @@ void BUILD_FUNC(delete_link)(QUEUE_TYPE *queue, CUList *link)
 
     QUEUE_UNLOCK(queue);
 }
+
+void BUILD_FUNC(foreach)(QUEUE_TYPE *queue, CUForeachFunc callback, void *userdata)
+{
+    if (cu_unlikely(!queue || !callback))
+        return;
+
+    QUEUE_LOCK(queue);
+
+    CUList *tmp;
+    for (tmp = queue->head; tmp; tmp = tmp->next) {
+        if (!callback(tmp->data, userdata))
+            goto done;
+    }
+
+done:
+    QUEUE_UNLOCK(queue);
+}

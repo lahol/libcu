@@ -43,3 +43,6 @@ bool cu_queue_fixed_size_pop_custom(CUQueueFixedSize *queue, CUCompareFunc compa
 
 /* Remove a link from the queue. */
 void cu_queue_fixed_size_delete_link(CUQueueFixedSize *queue, CUList *link);
+
+/* Run callback for each element. */
+void cu_queue_fixed_size_foreach(CUQueueFixedSize *queue, CUForeachFunc callback, void *userdata);

@@ -17,6 +17,9 @@ typedef int (*CUCompareFunc)(void *, void *);
 /* key, value, data */
 typedef bool (*CUTraverseFunc)(void *, void *, void *);
 
+/* data, userdata */
+typedef bool (*CUForeachFunc)(void *, void *);
+
 typedef enum {
     CU_TYPE_UNKNOWN = 0,
     CU_TYPE_UINT,

@@ -35,3 +35,6 @@ void *cu_queue_pop_custom(CUQueue *queue, CUCompareFunc compare, void *userdata)
 
 /* Remove a link from the queue. */
 void cu_queue_delete_link(CUQueue *queue, CUList *link);
+
+/* Run callback for each element. */
+void cu_queue_foreach(CUQueue *queue, CUForeachFunc callback, void *userdata);
