@@ -259,6 +259,45 @@ BUILD_FUNC(pop_custom)(QUEUE_TYPE *queue, CUCompareFunc compare, void *userdata
 #endif
 }
 
+/* Free all elements matching a criterion. */
+void BUILD_FUNC(clear_matching)(QUEUE_TYPE *queue, CUCompareFunc compare, CUDestroyNotifyFunc notify, void *userdata)
+{
+    if (cu_unlikely(!queue))
+        return;
+
+    CUList *tmp, *pnext;
+
+    QUEUE_LOCK(queue);
+
+    tmp = queue->head;
+    while (tmp) {
+        pnext = tmp->next;
+
+        if (compare(tmp->data, userdata) == 0) {
+            if (tmp->prev)
+                tmp->prev->next = tmp->next;
+            else
+                queue->head = tmp->next;
+            if (tmp->next)
+                tmp->next->prev = tmp->prev;
+            else
+                queue->tail = tmp->prev;
+            if (notify)
+                notify(tmp->data);
+#if QUEUE_FIXED_SIZE
+            cu_fixed_size_memory_pool_free(queue->pool, tmp);
+#else
+            cu_free(tmp);
+#endif
+            --queue->length;
+        }
+
+        tmp = pnext;
+    }
+
+    QUEUE_UNLOCK(queue);
+}
+
 void BUILD_FUNC(delete_link)(QUEUE_TYPE *queue, CUList *link)
 {
     if (cu_unlikely(!queue || !link))
