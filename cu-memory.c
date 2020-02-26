@@ -1,6 +1,7 @@
 #include "cu-memory.h"
 #include <stdlib.h>
 #include <memory.h>
+#include <assert.h>
 
 #include <stdint.h>
 #include "cu.h"
@@ -169,6 +170,8 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
             }
         }
     }
+
+    assert(mem_group != NULL);
 
 #ifdef DEBUG
     fprintf(stderr, "alloc in group %p, head: %u, free: %u, init: %u\n",
