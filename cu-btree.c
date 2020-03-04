@@ -210,6 +210,9 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
             link = &P->rlink;
         }
         else {
+            /* The key was already set. Thus release the memory. */
+            if (tree->destroy_key && P->key != key)
+                tree->destroy_key(key);
             return P;
         }
 
@@ -221,6 +224,10 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
                 Q->key = key;
                 *link = Q;
                 _cu_btree_rebalance(tree, S, Q, T, key);
+            }
+            else {
+                if (tree->destroy_key)
+                    tree->destroy_key(key);
             }
             return Q;
         }
@@ -240,6 +247,10 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
         _cu_btree_rebalance(tree, S, Q, T, key);
 
         return Q;
+    }
+    else {
+        if (tree->destroy_key)
+            tree->destroy_key(key);
     }
 
     return NULL;
