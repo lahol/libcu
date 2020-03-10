@@ -20,7 +20,10 @@ void cu_array_init(CUArray *array, CUType type, uint32_t length)
     if (array && type <= CU_TYPE_ARRAY) {
         array->member_type = type;
         array->length = length;
-        array->data = cu_alloc0(length * _cu_element_sizes[type]);
+        if (length)
+            array->data = cu_alloc0(length * _cu_element_sizes[type]);
+        else
+            array->data = NULL;
     }
 }
 
@@ -30,8 +33,12 @@ void cu_array_copy(CUArray *dst, CUArray *src)
         cu_free(dst->data);
         dst->member_type = src->member_type;
         dst->length = src->length;
-        dst->data = cu_alloc(dst->length * _cu_element_sizes[dst->member_type]);
-        memcpy(dst->data, src->data, dst->length * _cu_element_sizes[dst->member_type]);
+        if (dst->length) {
+            dst->data = cu_alloc(dst->length * _cu_element_sizes[dst->member_type]);
+            memcpy(dst->data, src->data, dst->length * _cu_element_sizes[dst->member_type]);
+        }
+        else
+            dst->data = NULL;
     }
     else if (dst) {
         cu_array_init(dst, 0, 0);
