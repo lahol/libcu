@@ -290,7 +290,7 @@ void cu_btree_foreach(CUBTree *tree,
             goto done;
 
         node = (CUBTreeNode *)cu_stack_pop(&stack);
-        if (traverse(node->key, node->value, userdata))
+        if (!traverse(node->key, node->value, userdata))
             goto done;
 
         node = node->rlink;
