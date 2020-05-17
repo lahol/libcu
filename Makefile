@@ -4,19 +4,22 @@ LIBS=-lpthread -lrt
 
 PREFIX := /usr
 
-cu_SRC := $(wildcard *.c)
+CU_SRC_FULL := $(wildcard *.c)
+cu_SRC := $(filter-out test.c, $(CU_SRC_FULL))
 cu_OBJ := $(cu_SRC:.c=.o)
 cu_HEADERS := $(wildcard *.h)
 
 
 
-all: libcu.so.1.0
+all: libcu.so.1.0 test
 
 libcu.so.1.0: $(cu_OBJ)
 #	$(AR) cvr -o $@ $^
 	$(CC) -shared -Wl,-soname,libcu.so.1 -o $@ $^ $(LIBS)
 	ln -sf libcu.so.1.0 libcu.so.1
 	ln -sf libcu.so.1 libcu.so
+
+test: test.o cu-heap.o cu-memory.o cu-list.o
 
 %.o: %.c $(cu_HEADERS)
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
