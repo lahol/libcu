@@ -38,15 +38,38 @@ static int _cu_btree_compare_pointers(void *a, void *b, void *nil)
     return 0;
 }
 
-/* Initialize a tree.
- * compare_data is passed as third argument to compare. */
-CUBTree *cu_btree_new(CUCompareDataFunc compare,
-                      void *compare_data,
-                      CUDestroyNotifyFunc destroy_key,
-                      CUDestroyNotifyFunc destroy_value)
+static
+CUBTreeNode *_cu_btree_alloc(CUFixedSizeMemoryPool *pool)
 {
-    CUBTree *tree = cu_alloc(sizeof(CUBTree)); 
-    tree->node_mem = cu_fixed_size_memory_pool_new(sizeof(CUBTreeNode), 0);
+    return (CUBTreeNode *)(pool ? cu_fixed_size_memory_pool_alloc(pool) : cu_alloc(sizeof(CUBTreeNode)));
+}
+
+static
+void _cu_btree_free(CUFixedSizeMemoryPool *pool, CUBTreeNode *node)
+{
+    if (pool)
+        cu_fixed_size_memory_pool_free(pool, node);
+    else
+        cu_free(node);
+}
+
+/* Initialize a tree.
+ * compare_data is passed as third argument to compare. 
+ * Option to use a fixed size memory pool or use classical alloc/free. */
+CUBTree *cu_btree_new_full(CUCompareDataFunc compare,
+                           void *compare_data,
+                           CUDestroyNotifyFunc destroy_key,
+                           CUDestroyNotifyFunc destroy_value,
+                           bool use_fixed_memory_pool)
+{
+    CUBTree *tree = cu_alloc(sizeof(CUBTree));
+    if (use_fixed_memory_pool) {
+        tree->node_mem = cu_fixed_size_memory_pool_new(sizeof(CUBTreeNode), 0);
+        cu_fixed_size_memory_pool_release_empty_groups(tree->node_mem, true);
+    }
+    else {
+        tree->node_mem = NULL;
+    }
 
     tree->root = NULL;
     tree->compare = compare ? compare : _cu_btree_compare_pointers;
@@ -57,6 +80,14 @@ CUBTree *cu_btree_new(CUCompareDataFunc compare,
     tree->height = 0;
 
     return tree;
+}
+
+CUBTree *cu_btree_new(CUCompareDataFunc compare,
+                      void *compare_data,
+                      CUDestroyNotifyFunc destroy_key,
+                      CUDestroyNotifyFunc destroy_value)
+{
+    return cu_btree_new_full(compare, compare_data, destroy_key, destroy_value, true);
 }
 
 void _cu_btree_clear_node(void *key, void *value, CUBTree *tree)
@@ -76,7 +107,8 @@ void cu_btree_clear(CUBTree *tree)
     if (tree->destroy_key || tree->destroy_value)
         cu_btree_foreach(tree, (CUTraverseFunc)_cu_btree_clear_node, tree);
 
-    cu_fixed_size_memory_pool_clear(tree->node_mem);
+    if (tree->node_mem)
+        cu_fixed_size_memory_pool_clear(tree->node_mem);
 
     tree->root = NULL;
 }
@@ -87,7 +119,8 @@ void cu_btree_destroy(CUBTree *tree)
     if (cu_unlikely(!tree))
         return;
     cu_btree_clear(tree);
-    cu_fixed_size_memory_pool_destroy(tree->node_mem);
+    if (tree->node_mem)
+        cu_fixed_size_memory_pool_destroy(tree->node_mem);
     cu_free(tree);
 }
 
@@ -219,7 +252,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
         /* We are either to the left or to the right of P. */
         if (Q == NULL) { /* We found the right place */
             if (create_node) {
-                Q = (CUBTreeNode *)cu_fixed_size_memory_pool_alloc(tree->node_mem);
+                Q = _cu_btree_alloc(tree->node_mem);
                 memset(Q, 0, sizeof(CUBTreeNode));
                 Q->key = key;
                 *link = Q;
@@ -239,7 +272,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
     };
 
     if (create_node) {
-        Q = (CUBTreeNode *)cu_fixed_size_memory_pool_alloc(tree->node_mem);
+        Q = _cu_btree_alloc(tree->node_mem);
         memset(Q, 0, sizeof(CUBTreeNode));
         Q->key = key;
         S = Q;

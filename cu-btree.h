@@ -5,6 +5,14 @@
 
 typedef struct _CUBTree CUBTree;
 
+/* Initialize a tree.
+ * compare_data is passed as third argument to compare. 
+ * Option to use a fixed size memory pool or use classical alloc/free. */
+CUBTree *cu_btree_new_full(CUCompareDataFunc compare,
+                           void *compare_data,
+                           CUDestroyNotifyFunc destroy_key,
+                           CUDestroyNotifyFunc destroy_value,
+                           bool use_fixed_memory_pool);
 
 /* Initialize a tree.
  * compare_data is passed as third argument to compare. */
