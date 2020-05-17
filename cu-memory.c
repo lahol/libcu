@@ -77,6 +77,11 @@ void cu_set_memory_handler(CUMemoryHandler *handler)
 #define MEMORY_GROUP_ELEMENT_PTR(group, block, element_size) ((void *)((void *)(group) +\
                 MEMORY_GROUP_HEADER_SIZE + (block) * (element_size)))
 
+/* Default allocation size for a memory group. */
+#ifndef CFG_FM_POOL_DEFAULT_GROUP_ALLOC_SIZE
+#define CFG_FM_POOL_DEFAULT_GROUP_ALLOC_SIZE 16384
+#endif
+
 struct _CUFixedSizeMemoryPool {
     uint32_t group_size;    /* number of elements in each group. */
     uint32_t element_size;  /* size of each element. */
@@ -129,9 +134,9 @@ CUFixedSizeMemoryPool *cu_fixed_size_memory_pool_new(size_t element_size, size_t
     pool->element_size = ROUND_TO_8(element_size);
     if (pool->element_size == 0)
         pool->element_size = 8;
-    assert(pool->element_size <= (4096 - MEMORY_GROUP_HEADER_SIZE));
+    assert(pool->element_size <= (CFG_FM_POOL_DEFAULT_GROUP_ALLOC_SIZE - MEMORY_GROUP_HEADER_SIZE));
     if (group_size == 0)
-        pool->group_size = (4096 - MEMORY_GROUP_HEADER_SIZE) / pool->element_size;
+        pool->group_size = (CFG_FM_POOL_DEFAULT_GROUP_ALLOC_SIZE - MEMORY_GROUP_HEADER_SIZE) / pool->element_size;
     else
         pool->group_size = group_size;
 
