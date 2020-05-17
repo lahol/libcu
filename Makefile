@@ -19,10 +19,10 @@ libcu.so.1.0: $(cu_OBJ)
 	ln -sf libcu.so.1.0 libcu.so.1
 	ln -sf libcu.so.1 libcu.so
 
-bm-fixed-mem: bm-fixed-mem.o cu-list.o cu-memory.o cu-btree.o cu-stack.o
+bm-fixed-mem: bm-fixed-mem.o cu-list.o cu-memory.o cu-btree.o cu-stack.o cu-heap.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 	
-test: test.o cu-heap.o cu-memory.o cu-list.o
+test: test.o cu-heap.o cu-memory.o cu-list.o cu-btree.o cu-stack.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.c $(cu_HEADERS)

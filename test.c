@@ -7,6 +7,7 @@
 
 int cmp_uint(void *a, void *b, void *data)
 {
+    fprintf(stderr, "compare %u, %u\n", CU_POINTER_TO_UINT(a), CU_POINTER_TO_UINT(b));
     if (CU_POINTER_TO_UINT(a) < CU_POINTER_TO_UINT(b))
         return 1;
     if (CU_POINTER_TO_UINT(a) > CU_POINTER_TO_UINT(b))
@@ -21,11 +22,16 @@ int main(int argc, char **argv)
 
     uint32_t j;
     uint32_t ins;
+#if 0
     for (j = 0; j < 100; ++j) {
         ins = (uint32_t)(rand() % 32);
         fprintf(stderr, "insert %u\n", ins);
         cu_heap_insert(&heap, CU_UINT_TO_POINTER(ins));
     }
+#endif
+    cu_heap_insert(&heap, CU_UINT_TO_POINTER(5));
+    cu_heap_insert(&heap, CU_UINT_TO_POINTER(7));
+    cu_heap_insert(&heap, CU_UINT_TO_POINTER(3));
 
     fprintf(stderr, "start to pop\n");
     void *r;
@@ -37,6 +43,6 @@ int main(int argc, char **argv)
     }
     fprintf(stderr, "popped %u\n", j);
 
-    cu_heap_clear(&heap);
+    cu_heap_clear(&heap, NULL);
     return 0;
 }

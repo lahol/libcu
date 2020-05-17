@@ -32,6 +32,11 @@ void cu_btree_insert(CUBTree *tree,
                      void *key,
                      void *value);
 
+/* Get an element. */
+bool cu_btree_find(CUBTree *tree,
+                   void *key,
+                   void **data);
+
 /* Callback for each element in the tree. The tree is processed
  * in order.
  */

@@ -298,6 +298,20 @@ void cu_btree_insert(CUBTree *tree,
     node->value = value;
 }
 
+/* Get an element. */
+bool cu_btree_find(CUBTree *tree,
+                   void *key,
+                   void **data)
+{
+    CUBTreeNode *node = _cu_btree_get_node_for_key(tree, key, false);
+    if (node) {
+        if (data)
+            *data = node->value;
+        return true;
+    }
+    return false;
+}
+
 /* Callback for each element in the tree. The tree is processed
  * in order.
  */

@@ -5,7 +5,8 @@
 
 #include <stdint.h>
 #include "cu.h"
-#include "cu-list.h"
+#include "cu-heap.h"
+#include "cu-btree.h"
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -65,12 +66,13 @@ void cu_set_memory_handler(CUMemoryHandler *handler)
 /****************************
  *  Fixed size memory pool.
  ****************************/
-/* Size of the header in each group, (head id, number initialized, number free, reserved; each 4 bytes) */
+/* Size of the header in each group, (head id, number initialized, number free, position in heap; each 4 bytes) */
 #define MEMORY_GROUP_HEADER_SIZE       16
 
 #define MEMORY_GROUP_HEADER_HEAD(group) (*((uint32_t *)((group))))
 #define MEMORY_GROUP_HEADER_NUM_INIT(group) (*((uint32_t *)((void *)(group) + 4)))
 #define MEMORY_GROUP_HEADER_NUM_FREE(group) (*((uint32_t *)((void *)(group) + 8)))
+#define MEMORY_GROUP_HEADER_HEAP_POS(group) (*((uint32_t *)((void *)(group) + 12)))
 
 #define MEMORY_GROUP_ELEMENT(group, block, element_size) (*((uint32_t *)((void *)(group) +\
                 MEMORY_GROUP_HEADER_SIZE + (block) * (element_size))))
@@ -90,10 +92,42 @@ struct _CUFixedSizeMemoryPool {
     size_t total_free;      /* number of free elements in the whole pool. */
 
     /* FIXME: use a balanced tree here. */
-    CUList *memory_groups;
+    CUHeap free_memory;
+    CUBTree *managed_memory;
 
     uint32_t release_empty_groups : 1; /* If the alloc count of a group drops to zero, free this block. */
 };
+
+static
+void _cu_fixed_size_memory_pool_set_heap_position(void *mem_group, uint32_t pos, CUFixedSizeMemoryPool *pool)
+{
+    MEMORY_GROUP_HEADER_HEAP_POS(mem_group) = pos;
+}
+
+static
+int _cu_fixed_size_memory_pool_compare_free_space(void *gr1, void *gr2, CUFixedSizeMemoryPool *pool)
+{
+    /* Less free space should be on top. */
+    if (MEMORY_GROUP_HEADER_NUM_FREE(gr1) > MEMORY_GROUP_HEADER_NUM_FREE(gr2))
+        return -1;
+    if (MEMORY_GROUP_HEADER_NUM_FREE(gr1) < MEMORY_GROUP_HEADER_NUM_FREE(gr2))
+        return 1;
+    return 0;
+}
+
+static
+int _cu_fixed_size_memory_pool_compare_memory_range(void *ptr, void *group, CUFixedSizeMemoryPool *pool)
+{
+    /* If the pointer is left of the group start, the pointer is smaller.
+     * If it is outside the group range, it is larger.
+     * Otherwise, it is inside the group and considered equal
+     */
+    if (ptr < group)
+        return 1;
+    if (ptr > group + pool->alloc_size)
+        return -1;
+    return 0;
+}
 
 static
 void *_cu_fixed_size_memory_pool_group_new(CUFixedSizeMemoryPool *pool)
@@ -105,7 +139,7 @@ void *_cu_fixed_size_memory_pool_group_new(CUFixedSizeMemoryPool *pool)
 
     pool->total_free += pool->group_size;
 
-    pool->memory_groups = cu_list_prepend(pool->memory_groups, group);
+    cu_btree_insert(pool->managed_memory, group, group);
 
 #ifdef DEBUG
     fprintf(stderr, "new memory group %p, head: %u, free: %u, init: %u\n", group,
@@ -115,6 +149,7 @@ void *_cu_fixed_size_memory_pool_group_new(CUFixedSizeMemoryPool *pool)
     return group;
 }
 
+#if 0
 static
 void _cu_fixed_size_memory_pool_group_free(CUFixedSizeMemoryPool *pool, CUList *group_link)
 {
@@ -122,6 +157,7 @@ void _cu_fixed_size_memory_pool_group_free(CUFixedSizeMemoryPool *pool, CUList *
     pool->memory_groups = cu_list_delete_link(pool->memory_groups, group_link);
     pool->total_free -= pool->group_size;
 }
+#endif
 
 /* Create a new memory pool in which all elements have size element_size. The pool internally
  * will be group by blocks of group_size elements. Set this to 0 to get a reasonable default
@@ -142,6 +178,16 @@ CUFixedSizeMemoryPool *cu_fixed_size_memory_pool_new(size_t element_size, size_t
 
     pool->alloc_size = pool->group_size * pool->element_size + MEMORY_GROUP_HEADER_SIZE;
 
+    cu_heap_init_full(&pool->free_memory,
+                      (CUCompareDataFunc)_cu_fixed_size_memory_pool_compare_free_space,
+                      pool,
+                      (CUHeapSetPositionCallback)_cu_fixed_size_memory_pool_set_heap_position,
+                      pool);
+    pool->managed_memory = cu_btree_new_full((CUCompareDataFunc)_cu_fixed_size_memory_pool_compare_memory_range,
+                                             pool,
+                                             NULL,                             /* Do not free keys (group indices). */
+                                             (CUDestroyNotifyFunc)cu_free,     /* Free groups (value). */
+                                             false);                           /* Do not use fixes size memory pool (recursion!). */
 #ifdef DEBUG
     fprintf(stderr, "new pool, element_size: %u, group_size: %u, alloc_size: %zu\n",
             pool->element_size, pool->group_size, pool->alloc_size);
@@ -159,6 +205,7 @@ void cu_fixed_size_memory_pool_release_empty_groups(CUFixedSizeMemoryPool *pool,
 
     /* If set, release all empty groups. */
     if (do_release) {
+#if 0
         CUList *link = pool->memory_groups;
         CUList *next;
 
@@ -169,6 +216,7 @@ void cu_fixed_size_memory_pool_release_empty_groups(CUFixedSizeMemoryPool *pool,
             }
             link = next;
         }
+#endif
     }
 }
 
@@ -176,8 +224,9 @@ void cu_fixed_size_memory_pool_release_empty_groups(CUFixedSizeMemoryPool *pool,
 void cu_fixed_size_memory_pool_clear(CUFixedSizeMemoryPool *pool)
 {
     if (pool) {
-        cu_list_free_full(pool->memory_groups, (CUDestroyNotifyFunc)cu_free);
-        pool->memory_groups = NULL;
+        cu_heap_clear(&pool->free_memory, NULL);
+        cu_btree_destroy(pool->managed_memory);
+        pool->managed_memory = NULL;
         pool->total_free = 0;
     }
 }
@@ -186,7 +235,7 @@ void cu_fixed_size_memory_pool_clear(CUFixedSizeMemoryPool *pool)
 void cu_fixed_size_memory_pool_destroy(CUFixedSizeMemoryPool *pool)
 {
     if (pool) {
-        cu_list_free_full(pool->memory_groups, (CUDestroyNotifyFunc)cu_free);
+        cu_fixed_size_memory_pool_clear(pool);
         cu_free(pool);
     }
 }
@@ -194,21 +243,11 @@ void cu_fixed_size_memory_pool_destroy(CUFixedSizeMemoryPool *pool)
 /* Get a new element from the pool. */
 void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
 {
-    void *mem_group = NULL;
-    /* Get the first memory group with unused elements. */
-    if (cu_unlikely(!pool->total_free)) {
+    void *mem_group = cu_heap_pop_root(&pool->free_memory);
+    if (cu_unlikely(!mem_group)) {
+        /* No free memory available. */
         mem_group = _cu_fixed_size_memory_pool_group_new(pool);
     }
-    else {
-        CUList *tmp;
-        for (tmp = pool->memory_groups; tmp; tmp = tmp->next) {
-            if (MEMORY_GROUP_HEADER_NUM_FREE(tmp->data)) {
-                mem_group = tmp->data;
-                break;
-            }
-        }
-    }
-
     assert(mem_group != NULL);
 
 #ifdef DEBUG
@@ -232,6 +271,9 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
         /* If there are unsued elements left, store the value from the last memory location (the link to
          * the next unused element) in the head. */
         MEMORY_GROUP_HEADER_HEAD(mem_group) = *((uint32_t *)ret);
+
+        /* We still have free memory in this group. Push it back to the heap. */
+        cu_heap_insert(&pool->free_memory, mem_group);
     }
     else {
         /* There are no unused elements in this group. Set to invalid. */
@@ -249,13 +291,9 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
 /* Return an element to the pool. */
 void cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
 {
-    CUList *group_link;
     void *mem_group = NULL;
-    for (group_link = pool->memory_groups; group_link; group_link = group_link->next) {
-        if (ptr > group_link->data && ptr <= group_link->data + pool->alloc_size) {
-            mem_group = group_link->data;
-            break;
-        }
+    if (!cu_btree_find(pool->managed_memory, ptr, &mem_group)) {
+        return;
     }
 
 #ifdef DEBUG
@@ -272,13 +310,24 @@ void cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
     ++MEMORY_GROUP_HEADER_NUM_FREE(mem_group);
     ++pool->total_free;
 #ifdef DEBUG
-    fprintf(stderr, "free, index: %u, new head: %u, free: %u, init: %u\n",
+    fprintf(stderr, "free, index: %u, new head: %u, free: %u, init: %u, heappos: %u\n",
             index, MEMORY_GROUP_HEADER_HEAD(mem_group), MEMORY_GROUP_HEADER_NUM_FREE(mem_group),
-            MEMORY_GROUP_HEADER_NUM_INIT(mem_group));
+            MEMORY_GROUP_HEADER_NUM_INIT(mem_group), MEMORY_GROUP_HEADER_HEAP_POS(mem_group));
 #endif
 
-    if (pool->release_empty_groups &&
-        MEMORY_GROUP_HEADER_NUM_FREE(mem_group) == pool->group_size) {
-        _cu_fixed_size_memory_pool_group_free(pool, group_link);
+    if (MEMORY_GROUP_HEADER_NUM_FREE(mem_group) > 1) {
+        /* Group is already on the heap. Update its position. */
+        cu_heap_update(&pool->free_memory, MEMORY_GROUP_HEADER_HEAP_POS(mem_group));
     }
+    else {
+        /* Otherwise put this group back on the heap. */
+        cu_heap_insert(&pool->free_memory, mem_group);
+    }
+#if DEBUG
+        uint32_t j;
+        for (j = 0; j < pool->free_memory.length; ++j) {
+            fprintf(stderr, "heap[%u]: %p (free: %u)\n", j, pool->free_memory.data[j],
+                    MEMORY_GROUP_HEADER_NUM_FREE(pool->free_memory.data[j]));
+        }
+#endif
 }

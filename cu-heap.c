@@ -1,6 +1,7 @@
 #include "cu-heap.h"
 #include "cu-memory.h"
 #include "cu.h"
+#include <assert.h>
 
 void cu_heap_init_full(CUHeap *heap, CUCompareDataFunc compare, void *compare_data,
                                      CUHeapSetPositionCallback position_cb, void *position_data)
@@ -19,9 +20,14 @@ void cu_heap_init(CUHeap *heap, CUCompareDataFunc compare, void *compare_data)
     cu_heap_init_full(heap, compare, compare_data, NULL, NULL);
 }
 
-void cu_heap_clear(CUHeap *heap)
+void cu_heap_clear(CUHeap *heap, CUDestroyNotifyFunc destroy_data)
 {
     if (heap) {
+        if (destroy_data) {
+            uint32_t j;
+            for (j = 0; j < heap->length; ++j)
+                destroy_data(heap->data[j]);
+        }
         cu_free(heap->data);
         memset(heap, 0, sizeof(CUHeap));
     }
@@ -87,6 +93,8 @@ void cu_heap_insert(CUHeap *heap, void *element)
             heap->max_length *= 2;
         heap->data = cu_realloc(heap->data, heap->max_length * sizeof(void *));
     }
+    assert(heap->max_length);
+
     heap->data[heap->length] = element;
     if (heap->set_position_cb)
         heap->set_position_cb(element, heap->length, heap->set_position_cb_data);
