@@ -2,6 +2,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <memory.h>
 
 /* These are wrappers to allow other alloc/free functions. */
@@ -44,6 +45,9 @@ typedef struct _CUFixedSizeMemoryPool CUFixedSizeMemoryPool;
  * size.
  */
 CUFixedSizeMemoryPool *cu_fixed_size_memory_pool_new(size_t element_size, size_t group_size);
+
+/* If set, release memory of empty groups. */
+void cu_fixed_size_memory_pool_release_empty_groups(CUFixedSizeMemoryPool *pool, bool do_release);
 
 /* Clear all data from the pool. */
 void cu_fixed_size_memory_pool_clear(CUFixedSizeMemoryPool *pool);

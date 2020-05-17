@@ -1,2 +1,3 @@
 *.o
 libcu.so*
+bm-fixed-mem

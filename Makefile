@@ -4,13 +4,14 @@ LIBS=-lpthread -lrt
 
 PREFIX := /usr
 
-cu_SRC := $(wildcard *.c)
+cu_SRC_FULL := $(wildcard *.c)
+cu_SRC := $(filter-out bm-fixed-mem.c, $(cu_SRC_FULL))
 cu_OBJ := $(cu_SRC:.c=.o)
 cu_HEADERS := $(wildcard *.h)
 
 
 
-all: libcu.so.1.0
+all: libcu.so.1.0 bm-fixed-mem
 
 libcu.so.1.0: $(cu_OBJ)
 #	$(AR) cvr -o $@ $^
@@ -18,11 +19,13 @@ libcu.so.1.0: $(cu_OBJ)
 	ln -sf libcu.so.1.0 libcu.so.1
 	ln -sf libcu.so.1 libcu.so
 
+bm-fixed-mem: bm-fixed-mem.o cu-list.o cu-memory.o cu-btree.o cu-stack.o
+
 %.o: %.c $(cu_HEADERS)
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
 
 clean:
-	$(RM) -f libcu.so* *.o
+	$(RM) -f libcu.so* *.o bm-fixed-mem
 
 install:
 	install libcu.so.1.0 $(PREFIX)/lib/

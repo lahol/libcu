@@ -9,6 +9,7 @@
 
 #ifdef DEBUG
 #include <stdio.h>
+#include <inttypes.h>
 #endif
 
 static CUMemoryHandler memhandler = {
@@ -85,8 +86,11 @@ struct _CUFixedSizeMemoryPool {
 
     /* FIXME: use a balanced tree here. */
     CUList *memory_groups;
+
+    uint32_t release_empty_groups : 1; /* If the alloc count of a group drops to zero, free this block. */
 };
 
+static
 void *_cu_fixed_size_memory_pool_group_new(CUFixedSizeMemoryPool *pool)
 {
     void *group = cu_alloc(pool->alloc_size);
@@ -104,6 +108,14 @@ void *_cu_fixed_size_memory_pool_group_new(CUFixedSizeMemoryPool *pool)
 #endif
 
     return group;
+}
+
+static
+void _cu_fixed_size_memory_pool_group_free(CUFixedSizeMemoryPool *pool, CUList *group_link)
+{
+    cu_free(group_link->data);
+    pool->memory_groups = cu_list_delete_link(pool->memory_groups, group_link);
+    pool->total_free -= pool->group_size;
 }
 
 /* Create a new memory pool in which all elements have size element_size. The pool internally
@@ -130,9 +142,29 @@ CUFixedSizeMemoryPool *cu_fixed_size_memory_pool_new(size_t element_size, size_t
             pool->element_size, pool->group_size, pool->alloc_size);
 #endif
 
-    _cu_fixed_size_memory_pool_group_new(pool);
-
     return pool;
+}
+
+/* If set, release memory of empty groups. */
+void cu_fixed_size_memory_pool_release_empty_groups(CUFixedSizeMemoryPool *pool, bool do_release)
+{
+    if (cu_unlikely(!pool))
+        return;
+    pool->release_empty_groups = do_release;
+
+    /* If set, release all empty groups. */
+    if (do_release) {
+        CUList *link = pool->memory_groups;
+        CUList *next;
+
+        while (link) {
+            next = link->next;
+            if (MEMORY_GROUP_HEADER_NUM_FREE(link->data) == pool->group_size) {
+                _cu_fixed_size_memory_pool_group_free(pool, link);
+            }
+            link = next;
+        }
+    }
 }
 
 /* Clear all data from the pool. */
@@ -212,11 +244,11 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
 /* Return an element to the pool. */
 void cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
 {
-    CUList *tmp;
+    CUList *group_link;
     void *mem_group = NULL;
-    for (tmp = pool->memory_groups; tmp; tmp = tmp->next) {
-        if (ptr > tmp->data && ptr <= tmp->data + pool->alloc_size) {
-            mem_group = tmp->data;
+    for (group_link = pool->memory_groups; group_link; group_link = group_link->next) {
+        if (ptr > group_link->data && ptr <= group_link->data + pool->alloc_size) {
+            mem_group = group_link->data;
             break;
         }
     }
@@ -239,4 +271,9 @@ void cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
             index, MEMORY_GROUP_HEADER_HEAD(mem_group), MEMORY_GROUP_HEADER_NUM_FREE(mem_group),
             MEMORY_GROUP_HEADER_NUM_INIT(mem_group));
 #endif
+
+    if (pool->release_empty_groups &&
+        MEMORY_GROUP_HEADER_NUM_FREE(mem_group) == pool->group_size) {
+        _cu_fixed_size_memory_pool_group_free(pool, group_link);
+    }
 }
