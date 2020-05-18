@@ -225,8 +225,7 @@ void cu_fixed_size_memory_pool_clear(CUFixedSizeMemoryPool *pool)
 {
     if (pool) {
         cu_heap_clear(&pool->free_memory, NULL);
-        cu_btree_destroy(pool->managed_memory);
-        pool->managed_memory = NULL;
+        cu_btree_clear(pool->managed_memory);
         pool->total_free = 0;
     }
 }
@@ -236,6 +235,7 @@ void cu_fixed_size_memory_pool_destroy(CUFixedSizeMemoryPool *pool)
 {
     if (pool) {
         cu_fixed_size_memory_pool_clear(pool);
+        cu_btree_destroy(pool->managed_memory);
         cu_free(pool);
     }
 }
