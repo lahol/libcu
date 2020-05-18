@@ -87,10 +87,7 @@ void cu_heap_insert(CUHeap *heap, void *element)
     if (cu_unlikely(!heap))
         return;
     if (cu_unlikely(heap->length == heap->max_length)) {
-        if (cu_unlikely(!heap->max_length))
-            heap->max_length = 8;
-        else
-            heap->max_length *= 2;
+        heap->max_length += 512; /* Let heap grow linearly (on 64 bit systems, use increments of 4K). */
         heap->data = cu_realloc(heap->data, heap->max_length * sizeof(void *));
     }
     assert(heap->max_length);
