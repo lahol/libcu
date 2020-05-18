@@ -133,9 +133,9 @@ void cu_btree_destroy(CUBTree *tree)
  */
 #define BALANCE_LEAN_LEFT    2
 #define BALANCE_LEAN_RIGHT   1
-static void _cu_btree_rebalance(CUBTree *tree, CUBTreeNode *S, CUBTreeNode *Q, CUBTreeNode *T, void *key)
+static void _cu_btree_rebalance(CUBTree *tree, CUBTreeNode *S, CUBTreeNode *Q, CUBTreeNode *T)
 {
-    int rc = tree->compare(key, S->key, tree->compare_data);
+    int rc = tree->compare(Q->key, S->key, tree->compare_data);
     uint8_t balance = 0;
     CUBTreeNode *R = S, *P = S;
     if (rc > 0) {
@@ -148,7 +148,7 @@ static void _cu_btree_rebalance(CUBTree *tree, CUBTreeNode *S, CUBTreeNode *Q, C
     }
 
     while (P != Q) {
-        rc = tree->compare(key, P->key, tree->compare_data);
+        rc = tree->compare(Q->key, P->key, tree->compare_data);
         if (rc > 0) {
             P->balance = BALANCE_LEAN_LEFT;
             P = P->llink;
@@ -256,7 +256,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
                 memset(Q, 0, sizeof(CUBTreeNode));
                 Q->key = key;
                 *link = Q;
-                _cu_btree_rebalance(tree, S, Q, T, key);
+                _cu_btree_rebalance(tree, S, Q, T);
             }
             else {
                 if (tree->destroy_key)
@@ -277,7 +277,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
         Q->key = key;
         S = Q;
         tree->root = Q;
-        _cu_btree_rebalance(tree, S, Q, T, key);
+        _cu_btree_rebalance(tree, S, Q, T);
 
         return Q;
     }
@@ -322,21 +322,31 @@ void cu_btree_foreach(CUBTree *tree,
     if (!tree || !tree->height || !traverse)
         return;
 
-    CUStack stack;
-    cu_stack_init(&stack);
+    static CUFixedStackClass fscls = {
+        .element_size = sizeof(CUBTreeNode *),
+        .align = 0,
+        .clear_func = NULL,
+        .copy_func = NULL,
+        .setup_proc = NULL,
+        .extra_data_size = 0
+    };
+
+    CUFixedStack stack;
+    cu_fixed_stack_init(&stack, &fscls, tree->height);
 
     CUBTreeNode *node = tree->root;
 
     while (1) {
         while (node) {
-            cu_stack_push(&stack, node);
+            *((CUBTreeNode **)cu_fixed_stack_fetch_next(&stack)) = node;
+            cu_fixed_stack_push(&stack);
             node = node->llink;
         }
 
         if (!stack.length)
             goto done;
 
-        node = (CUBTreeNode *)cu_stack_pop(&stack);
+        node = *((CUBTreeNode **)cu_fixed_stack_pop(&stack));
         if (!traverse(node->key, node->value, userdata))
             goto done;
 
@@ -344,6 +354,5 @@ void cu_btree_foreach(CUBTree *tree,
     }
 
 done:
-    cu_stack_clear(&stack, NULL);
-
+    cu_fixed_stack_clear(&stack);
 }

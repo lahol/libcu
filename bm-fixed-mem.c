@@ -10,7 +10,7 @@ int main(int argc, char **argv)
     size_t element_size = 152;
     size_t group_size = 0; /*16384/element_size*/;
 
-    uint64_t alloc_count = 1e6;
+    uint64_t alloc_count = 1e7;
     uint64_t j;
 
     clock_t starttime = clock();
