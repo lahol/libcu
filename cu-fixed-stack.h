@@ -13,7 +13,6 @@ typedef struct {
     size_t extra_data_size;    /* extra data */
     uint8_t align;            /* just a flag */
     CUFixedStackClearElementFunc clear_func;
-    CUFixedStackElementCopyFunc copy_func;
     CUFixedStackElementSetupProc setup_proc;
 } CUFixedStackClass;
 
@@ -41,3 +40,9 @@ void *cu_fixed_stack_get_tail(CUFixedStack *stack);
 void *cu_fixed_stack_get_head(CUFixedStack *stack);
 void *cu_fixed_stack_previous(CUFixedStack *stack, void *current);
 void *cu_fixed_stack_next(CUFixedStack *stack, void *current);
+
+/* Convenience wrappers for just keeping pointers on the stack. */
+CUFixedStack *cu_fixed_pointer_stack_new(size_t max_length);
+void cu_fixed_pointer_stack_init(CUFixedStack *stack, size_t max_length);
+void cu_fixed_pointer_stack_push(CUFixedStack *stack, void *data);
+void *cu_fixed_pointer_stack_pop(CUFixedStack *stack);

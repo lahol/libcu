@@ -347,31 +347,21 @@ void cu_btree_foreach(CUBTree *tree,
     if (!tree || !tree->height || !traverse)
         return;
 
-    static CUFixedStackClass fscls = {
-        .element_size = sizeof(CUBTreeNode *),
-        .align = 0,
-        .clear_func = NULL,
-        .copy_func = NULL,
-        .setup_proc = NULL,
-        .extra_data_size = 0
-    };
-
     CUFixedStack stack;
-    cu_fixed_stack_init(&stack, &fscls, tree->height);
+    cu_fixed_pointer_stack_init(&stack, tree->height);
 
     CUBTreeNode *node = tree->root;
 
     while (1) {
         while (node) {
-            *((CUBTreeNode **)cu_fixed_stack_fetch_next(&stack)) = node;
-            cu_fixed_stack_push(&stack);
+            cu_fixed_pointer_stack_push(&stack, node);
             node = node->llink;
         }
 
         if (!stack.length)
             goto done;
 
-        node = *((CUBTreeNode **)cu_fixed_stack_pop(&stack));
+        node = (CUBTreeNode *)cu_fixed_pointer_stack_pop(&stack);
 #ifdef DEBUG_BTREE_DOT
         fprintf(stdout, "n%p [label=\"%u, bal: %u\"];\n", node, CU_POINTER_TO_UINT(node->key), node->balance);
         if (node->llink)

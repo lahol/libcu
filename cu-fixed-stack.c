@@ -141,3 +141,34 @@ void *cu_fixed_stack_next(CUFixedStack *stack, void *current)
         return NULL;
     return (void *)(current + stack->total_element_size);
 }
+
+static CUFixedStackClass fs_pointer_cls = {
+    .element_size = sizeof(void *),
+    .extra_data_size = 0,
+    .align = 0,
+    .clear_func = NULL,
+    .setup_proc = NULL
+};
+
+CUFixedStack *cu_fixed_pointer_stack_new(size_t max_length)
+{
+    return cu_fixed_stack_new(&fs_pointer_cls, max_length);
+}
+
+void cu_fixed_pointer_stack_init(CUFixedStack *stack, size_t max_length)
+{
+    cu_fixed_stack_init(stack, &fs_pointer_cls, max_length);
+}
+
+void cu_fixed_pointer_stack_push(CUFixedStack *stack, void *data)
+{
+    *((void **)cu_fixed_stack_fetch_next(stack)) = data;
+    cu_fixed_stack_push(stack);
+}
+
+void *cu_fixed_pointer_stack_pop(CUFixedStack *stack)
+{
+    if (stack->length)
+        return *((void **)cu_fixed_stack_pop(stack));
+    return NULL;
+}
