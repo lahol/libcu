@@ -224,7 +224,9 @@ static void _cu_btree_rebalance(CUBTree *tree, CUBTreeNode *S, CUBTreeNode *Q, C
 
 }
 
-static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool create_node)
+/* own_key: we took responsibility for the key. Thus, we have to destroy it, if we do not use it anymore.
+ */
+static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool create_node, bool own_key)
 {
     CUBTreeNode *T, *S, *P, *Q, **link;
     T = Q = NULL;
@@ -232,6 +234,10 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
 
     int rc;
 
+    /* Starting at the root, walk down the tree.
+     * P is the current parent node.
+     * link points to the pointer of the parent node, i.e., represents the arc from P to Q.
+     */
     while (P) {
         rc = tree->compare(key, P->key, tree->compare_data);
         if (rc > 0) { /* key < P->key */
@@ -243,8 +249,9 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
             link = &P->rlink;
         }
         else {
-            /* The key was already set. Thus release the memory. */
-            if (tree->destroy_key && P->key != key)
+            /* The key was already set. Thus release the memory.
+             * If create_node is false, we do not own the key. */
+            if (own_key && tree->destroy_key && P->key != key)
                 tree->destroy_key(key);
             return P;
         }
@@ -259,7 +266,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
                 _cu_btree_rebalance(tree, S, Q, T);
             }
             else {
-                if (tree->destroy_key)
+                if (own_key && tree->destroy_key)
                     tree->destroy_key(key);
             }
             return Q;
@@ -282,7 +289,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
         return Q;
     }
     else {
-        if (tree->destroy_key)
+        if (own_key && tree->destroy_key)
             tree->destroy_key(key);
     }
 
@@ -294,7 +301,7 @@ void cu_btree_insert(CUBTree *tree,
                      void *key,
                      void *value)
 {
-    CUBTreeNode *node = _cu_btree_get_node_for_key(tree, key, true);
+    CUBTreeNode *node = _cu_btree_get_node_for_key(tree, key, true, true);
     node->value = value;
 }
 
@@ -303,7 +310,7 @@ bool cu_btree_find(CUBTree *tree,
                    void *key,
                    void **data)
 {
-    CUBTreeNode *node = _cu_btree_get_node_for_key(tree, key, false);
+    CUBTreeNode *node = _cu_btree_get_node_for_key(tree, key, false, false);
     if (node) {
         if (data)
             *data = node->value;
