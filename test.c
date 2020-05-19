@@ -4,6 +4,7 @@
 
 #include "cu.h"
 #include "cu-heap.h"
+#include "cu-btree.h"
 
 int cmp_uint(void *a, void *b, void *data)
 {
@@ -15,8 +16,16 @@ int cmp_uint(void *a, void *b, void *data)
     return 0;
 }
 
+static
+bool visit_node(void *key, void *value, void *nil)
+{
+    fprintf(stderr, "visit: %u\n", CU_POINTER_TO_UINT(key));
+    return true;
+}
+
 int main(int argc, char **argv)
 {
+#if 0
     CUHeap heap;
     cu_heap_init(&heap, (CUCompareDataFunc)cmp_uint, NULL);
 
@@ -44,5 +53,27 @@ int main(int argc, char **argv)
     fprintf(stderr, "popped %u\n", j);
 
     cu_heap_clear(&heap, NULL);
+#endif
+    CUBTree *btree = cu_btree_new(NULL, NULL, NULL, NULL);
+    uint32_t j, ins;
+    for (j = 0; j < 20; ++j) {
+        ins = (uint32_t)(rand() % 64);
+        fprintf(stderr, "insert: %u\n", ins);
+        cu_btree_insert(btree, CU_UINT_TO_POINTER(ins), CU_UINT_TO_POINTER(ins));
+#ifdef DEBUG_BTREE_DOT
+        fprintf(stdout, "digraph G%u {\n", j);
+        cu_btree_foreach(btree, (CUTraverseFunc)visit_node, NULL);
+        fprintf(stdout, "}\n");
+#endif
+    }
+
+#ifdef DEBUG_BTREE_DOT
+        fprintf(stdout, "digraph G%u {\n", j);
+    cu_btree_foreach(btree, (CUTraverseFunc)visit_node, NULL);
+        fprintf(stdout, "}\n");
+#endif
+
+    cu_btree_destroy(btree);
+
     return 0;
 }

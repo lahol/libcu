@@ -133,20 +133,27 @@ void cu_btree_destroy(CUBTree *tree)
  */
 #define BALANCE_LEAN_LEFT    2
 #define BALANCE_LEAN_RIGHT   1
+
+/* S is the deepest node where an imbalance happend, T it’s parent. Now we insert the node Q. */
 static void _cu_btree_rebalance(CUBTree *tree, CUBTreeNode *S, CUBTreeNode *Q, CUBTreeNode *T)
 {
     int rc = tree->compare(Q->key, S->key, tree->compare_data);
     uint8_t balance = 0;
     CUBTreeNode *R = S, *P = S;
-    if (rc > 0) {
+    if (rc > 0) { /* Q was inserted in the left subtree of S. */
         balance = BALANCE_LEAN_LEFT;
         R = P = S->llink;
     }
-    else if (rc < 0) {
+    else if (rc < 0) { /* Q was inserted in the right subtree of S. */
         balance = BALANCE_LEAN_RIGHT;
         R = P = S->rlink;
     }
+    /* If neither is tru, we have S=Q and thus P=Q. Since the balance of the node Q is 0, we just
+     * increase the height, skipping the next loop. */
 
+    /* Correct the balance to all nodes on the path from S. Before this,
+     * the subtrees below S are all balanced, since S was the deepest node where
+     * we had imbalance. */
     while (P != Q) {
         rc = tree->compare(Q->key, P->key, tree->compare_data);
         if (rc > 0) {
@@ -159,18 +166,24 @@ static void _cu_btree_rebalance(CUBTree *tree, CUBTreeNode *S, CUBTreeNode *Q, C
         }
     }
 
+    /* The subtree under S is balanced. Since S is the deepest node with an imbalance, all nodes
+     * below it were balanced. Inserting the node now unbalances the tree and increases the height. */
     if (S->balance == 0) {
         S->balance = balance;
         ++tree->height;
         return;
     }
     else if ((S->balance | balance) == (BALANCE_LEAN_LEFT | BALANCE_LEAN_RIGHT)) {
+        /* The subtree was leaning left and we insert on the right or the other way around.
+         * Either way, the subtree is now balanced again and there is nothing left to do. */
         S->balance = 0;
         return;
     }
     else if (S->balance == balance) {
+        /* Insert left on a left leaning tree or right on a right leaning tree.
+         * Rotate. */
         if (R->balance == balance) {
-            /* A8 */
+            /* A8: Single rotation. */
             P = R;
             S->balance = R->balance = 0;
             if (balance == BALANCE_LEAN_LEFT) {
@@ -183,7 +196,8 @@ static void _cu_btree_rebalance(CUBTree *tree, CUBTreeNode *S, CUBTreeNode *Q, C
             }
         }
         else if ((R->balance | balance) == (BALANCE_LEAN_LEFT | BALANCE_LEAN_RIGHT)) {
-            /* A9 */
+            /* R balance is opposite to S balance */
+            /* A9: double rotation */
             if (balance == BALANCE_LEAN_LEFT) {
                 P = R->rlink;
                 R->rlink = P->llink;
@@ -225,6 +239,7 @@ static void _cu_btree_rebalance(CUBTree *tree, CUBTreeNode *S, CUBTreeNode *Q, C
 }
 
 /* own_key: we took responsibility for the key. Thus, we have to destroy it, if we do not use it anymore.
+ * own_key is needed for create node.
  */
 static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool create_node, bool own_key)
 {
@@ -237,6 +252,8 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
     /* Starting at the root, walk down the tree.
      * P is the current parent node.
      * link points to the pointer of the parent node, i.e., represents the arc from P to Q.
+     * If a subtree is not balanced, we have T -> S … P -> Q[new], i.e., S is the deepest
+     * node where an imbalance happend, and T is it’s parent.
      */
     while (P) {
         rc = tree->compare(key, P->key, tree->compare_data);
@@ -250,7 +267,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
         }
         else {
             /* The key was already set. Thus release the memory.
-             * If create_node is false, we do not own the key. */
+             * If own_key is false, we do not own the key. */
             if (own_key && tree->destroy_key && P->key != key)
                 tree->destroy_key(key);
             return P;
@@ -278,6 +295,7 @@ static CUBTreeNode *_cu_btree_get_node_for_key(CUBTree *tree, void *key, bool cr
         P = Q;
     };
 
+    /* When we are here, the tree is empty. */
     if (create_node) {
         Q = _cu_btree_alloc(tree->node_mem);
         memset(Q, 0, sizeof(CUBTreeNode));
@@ -354,6 +372,13 @@ void cu_btree_foreach(CUBTree *tree,
             goto done;
 
         node = *((CUBTreeNode **)cu_fixed_stack_pop(&stack));
+#ifdef DEBUG_BTREE_DOT
+        fprintf(stdout, "n%p [label=\"%u, bal: %u\"];\n", node, CU_POINTER_TO_UINT(node->key), node->balance);
+        if (node->llink)
+            fprintf(stdout, "n%p -> n%p [label=\"L\"];\n", node, node->llink);
+        if (node->rlink)
+            fprintf(stdout, "n%p -> n%p [label=\"R\"];\n", node, node->rlink);
+#endif
         if (!traverse(node->key, node->value, userdata))
             goto done;
 
