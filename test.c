@@ -69,7 +69,9 @@ int main(int argc, char **argv)
 
 #ifdef DEBUG_BTREE_DOT
         fprintf(stdout, "digraph G%u {\n", j);
+#endif
     cu_btree_foreach(btree, (CUTraverseFunc)visit_node, NULL);
+#ifdef DEBUG_BTREE_DOT
         fprintf(stdout, "}\n");
 #endif
 

@@ -27,6 +27,10 @@ struct _CUBTree {
     CUDestroyNotifyFunc destroy_value;
 
     uint32_t height;
+
+    /* Keep stack around for find or delete and do not initialize with every access. */
+    uint32_t max_height;
+    CUFixedStack node_stack;
 };
 
 static int _cu_btree_compare_pointers(void *a, void *b, void *nil)
@@ -51,6 +55,19 @@ void _cu_btree_free(CUFixedSizeMemoryPool *pool, CUBTreeNode *node)
         cu_fixed_size_memory_pool_free(pool, node);
     else
         cu_free(node);
+}
+
+static inline
+void _cu_btree_node_stack_init(CUBTree *tree)
+{
+    if (tree->height > tree->max_height) {
+        cu_fixed_stack_clear(&tree->node_stack);
+        tree->max_height = tree->height;
+        cu_fixed_pointer_stack_init(&tree->node_stack, tree->max_height);
+    }
+    else {
+        cu_fixed_stack_reset(&tree->node_stack);
+    }
 }
 
 /* Initialize a tree.
@@ -347,21 +364,20 @@ void cu_btree_foreach(CUBTree *tree,
     if (!tree || !tree->height || !traverse)
         return;
 
-    CUFixedStack stack;
-    cu_fixed_pointer_stack_init(&stack, tree->height);
+    _cu_btree_node_stack_init(tree);
 
     CUBTreeNode *node = tree->root;
 
     while (1) {
         while (node) {
-            cu_fixed_pointer_stack_push(&stack, node);
+            cu_fixed_pointer_stack_push(&tree->node_stack, node);
             node = node->llink;
         }
 
-        if (!stack.length)
-            goto done;
+        if (!tree->node_stack.length)
+            break;
 
-        node = (CUBTreeNode *)cu_fixed_pointer_stack_pop(&stack);
+        node = (CUBTreeNode *)cu_fixed_pointer_stack_pop(&tree->node_stack);
 #ifdef DEBUG_BTREE_DOT
         fprintf(stdout, "n%p [label=\"%u, bal: %u\"];\n", node, CU_POINTER_TO_UINT(node->key), node->balance);
         if (node->llink)
@@ -370,11 +386,8 @@ void cu_btree_foreach(CUBTree *tree,
             fprintf(stdout, "n%p -> n%p [label=\"R\"];\n", node, node->rlink);
 #endif
         if (!traverse(node->key, node->value, userdata))
-            goto done;
+            break;
 
         node = node->rlink;
     }
-
-done:
-    cu_fixed_stack_clear(&stack);
 }
