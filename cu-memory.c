@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include "cu.h"
 #include "cu-heap.h"
-#include "cu-btree.h"
+#include "cu-avl-tree.h"
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -93,7 +93,7 @@ struct _CUFixedSizeMemoryPool {
 
     /* FIXME: use a balanced tree here. */
     CUHeap free_memory;
-    CUBTree *managed_memory;
+    CUAVLTree *managed_memory;
 
     uint32_t release_empty_groups : 1; /* If the alloc count of a group drops to zero, free this block. */
 };
@@ -139,7 +139,7 @@ void *_cu_fixed_size_memory_pool_group_new(CUFixedSizeMemoryPool *pool)
 
     pool->total_free += pool->group_size;
 
-    cu_btree_insert(pool->managed_memory, group, group);
+    cu_avl_tree_insert(pool->managed_memory, group, group);
 
 #ifdef DEBUG
     fprintf(stderr, "new memory group %p, head: %u, free: %u, init: %u\n", group,
@@ -183,7 +183,7 @@ CUFixedSizeMemoryPool *cu_fixed_size_memory_pool_new(size_t element_size, size_t
                       pool,
                       (CUHeapSetPositionCallback)_cu_fixed_size_memory_pool_set_heap_position,
                       pool);
-    pool->managed_memory = cu_btree_new_full((CUCompareDataFunc)_cu_fixed_size_memory_pool_compare_memory_range,
+    pool->managed_memory = cu_avl_tree_new_full((CUCompareDataFunc)_cu_fixed_size_memory_pool_compare_memory_range,
                                              pool,
                                              NULL,                             /* Do not free keys (group indices). */
                                              (CUDestroyNotifyFunc)cu_free,     /* Free groups (value). */
@@ -225,7 +225,7 @@ void cu_fixed_size_memory_pool_clear(CUFixedSizeMemoryPool *pool)
 {
     if (pool) {
         cu_heap_clear(&pool->free_memory, NULL);
-        cu_btree_clear(pool->managed_memory);
+        cu_avl_tree_clear(pool->managed_memory);
         pool->total_free = 0;
     }
 }
@@ -235,7 +235,7 @@ void cu_fixed_size_memory_pool_destroy(CUFixedSizeMemoryPool *pool)
 {
     if (pool) {
         cu_fixed_size_memory_pool_clear(pool);
-        cu_btree_destroy(pool->managed_memory);
+        cu_avl_tree_destroy(pool->managed_memory);
         cu_free(pool);
     }
 }
@@ -292,7 +292,7 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
 void cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
 {
     void *mem_group = NULL;
-    if (!cu_btree_find(pool->managed_memory, ptr, &mem_group)) {
+    if (!cu_avl_tree_find(pool->managed_memory, ptr, &mem_group)) {
         return;
     }
 
