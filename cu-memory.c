@@ -340,5 +340,5 @@ bool cu_fixed_size_memory_pool_is_managed(CUFixedSizeMemoryPool *pool, void *ptr
 {
     if (cu_unlikely(!pool))
         return false;
-    return cu_btree_find(pool->managed_memory, ptr, NULL);
+    return cu_avl_tree_find(pool->managed_memory, ptr, NULL);
 }
