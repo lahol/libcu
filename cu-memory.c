@@ -243,6 +243,8 @@ void cu_fixed_size_memory_pool_destroy(CUFixedSizeMemoryPool *pool)
 /* Get a new element from the pool. */
 void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
 {
+    if (cu_unlikely(!pool))
+        return NULL;
     void *mem_group = cu_heap_pop_root(&pool->free_memory);
     if (cu_unlikely(!mem_group)) {
         /* No free memory available. */
@@ -291,6 +293,8 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
 /* Return an element to the pool. */
 bool cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
 {
+    if (cu_unlikely(!pool))
+        return false;
     void *mem_group = NULL;
     if (!cu_btree_find(pool->managed_memory, ptr, &mem_group)) {
         return false;
