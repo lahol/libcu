@@ -60,3 +60,6 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool);
 
 /* Return an element to the pool. */
 bool cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr);
+
+/* Determine whether the memory is managed by the pool. */
+bool cu_fixed_size_memory_pool_is_managed(CUFixedSizeMemoryPool *pool, void *ptr);

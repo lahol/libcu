@@ -334,3 +334,11 @@ bool cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
 
     return true;
 }
+
+/* Determine whether the memory is managed by the pool. */
+bool cu_fixed_size_memory_pool_is_managed(CUFixedSizeMemoryPool *pool, void *ptr)
+{
+    if (cu_unlikely(!pool))
+        return false;
+    return cu_btree_find(pool->managed_memory, ptr, NULL);
+}
