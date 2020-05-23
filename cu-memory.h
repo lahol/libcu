@@ -59,4 +59,4 @@ void cu_fixed_size_memory_pool_destroy(CUFixedSizeMemoryPool *pool);
 void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool);
 
 /* Return an element to the pool. */
-void cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr);
+bool cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr);

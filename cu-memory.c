@@ -289,19 +289,16 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
 }
 
 /* Return an element to the pool. */
-void cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
+bool cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
 {
     void *mem_group = NULL;
     if (!cu_avl_tree_find(pool->managed_memory, ptr, &mem_group)) {
-        return;
+        return false;
     }
 
 #ifdef DEBUG
     fprintf(stderr, "ptr %p in group %p\n", ptr, mem_group);
 #endif
-
-    if (!mem_group)
-        return;
 
     uint32_t index = (ptr - mem_group - MEMORY_GROUP_HEADER_SIZE) / pool->element_size;
 
@@ -324,10 +321,12 @@ void cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
         cu_heap_insert(&pool->free_memory, mem_group);
     }
 #if DEBUG
-        uint32_t j;
-        for (j = 0; j < pool->free_memory.length; ++j) {
-            fprintf(stderr, "heap[%u]: %p (free: %u)\n", j, pool->free_memory.data[j],
-                    MEMORY_GROUP_HEADER_NUM_FREE(pool->free_memory.data[j]));
-        }
+    uint32_t j;
+    for (j = 0; j < pool->free_memory.length; ++j) {
+        fprintf(stderr, "heap[%u]: %p (free: %u)\n", j, pool->free_memory.data[j],
+                MEMORY_GROUP_HEADER_NUM_FREE(pool->free_memory.data[j]));
+    }
 #endif
+
+    return true;
 }
