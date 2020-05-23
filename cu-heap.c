@@ -114,6 +114,13 @@ void *cu_heap_pop_root(CUHeap *heap)
     return data;
 }
 
+void *cu_heap_peek_root(CUHeap *heap)
+{
+    if (cu_unlikely(!heap || !heap->data || !heap->length))
+        return NULL;
+    return heap->data[0];
+}
+
 void cu_heap_update(CUHeap *heap, uint32_t pos)
 {
     if (pos < heap->length)

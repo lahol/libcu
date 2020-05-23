@@ -26,4 +26,5 @@ void cu_heap_init_full(CUHeap *heap, CUCompareDataFunc compare, void *compare_da
 void cu_heap_clear(CUHeap *heap, CUDestroyNotifyFunc destroy_data);
 void cu_heap_insert(CUHeap *heap, void *element);
 void *cu_heap_pop_root(CUHeap *heap);
+void *cu_heap_peek_root(CUHeap *heap);
 void cu_heap_update(CUHeap *heap, uint32_t pos);

@@ -245,10 +245,16 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
 {
     if (cu_unlikely(!pool))
         return NULL;
-    void *mem_group = cu_heap_pop_root(&pool->free_memory);
+    /* The heap is ordered in such a way, that groups with the least free space are on top.
+     * If the memory group was the one with the least free space, it will end up on top again.
+     * Therefore, there is no need to pull it from the heap and put it back on again.
+     */
+    void *mem_group = cu_heap_peek_root(&pool->free_memory);
+    bool is_new_group = false;
     if (cu_unlikely(!mem_group)) {
         /* No free memory available. */
         mem_group = _cu_fixed_size_memory_pool_group_new(pool);
+        is_new_group = true;
     }
     assert(mem_group != NULL);
 
@@ -275,11 +281,16 @@ void *cu_fixed_size_memory_pool_alloc(CUFixedSizeMemoryPool *pool)
         MEMORY_GROUP_HEADER_HEAD(mem_group) = *((uint32_t *)ret);
 
         /* We still have free memory in this group. Push it back to the heap. */
-        cu_heap_insert(&pool->free_memory, mem_group);
+        if (is_new_group)
+            cu_heap_insert(&pool->free_memory, mem_group);
     }
     else {
         /* There are no unused elements in this group. Set to invalid. */
         MEMORY_GROUP_HEADER_HEAD(mem_group) = 0xffffffff;
+
+        /* If this was on top of the heap, remove it. */
+        if (cu_likely(!is_new_group))
+            cu_heap_pop_root(&pool->free_memory);
     }
 
 #ifdef DEBUG
