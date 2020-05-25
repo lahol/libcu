@@ -172,3 +172,10 @@ void *cu_fixed_pointer_stack_pop(CUFixedStack *stack)
         return *((void **)cu_fixed_stack_pop(stack));
     return NULL;
 }
+
+void *cu_fixed_pointer_stack_peek(CUFixedStack *stack)
+{
+    if (stack->length)
+        return *((void **)cu_fixed_stack_peek(stack));
+    return NULL;
+}

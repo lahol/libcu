@@ -46,3 +46,4 @@ CUFixedStack *cu_fixed_pointer_stack_new(size_t max_length);
 void cu_fixed_pointer_stack_init(CUFixedStack *stack, size_t max_length);
 void cu_fixed_pointer_stack_push(CUFixedStack *stack, void *data);
 void *cu_fixed_pointer_stack_pop(CUFixedStack *stack);
+void *cu_fixed_pointer_stack_peek(CUFixedStack *stack);

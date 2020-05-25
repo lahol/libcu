@@ -151,6 +151,7 @@ void cu_avl_tree_destroy(CUAVLTree *tree)
 #define BALANCE_LEAN_LEFT    2
 #define BALANCE_LEAN_RIGHT   1
 
+#if 0
 /* S is the deepest node where an imbalance happend, T it’s parent. Now we insert the node Q. */
 static void _cu_avl_tree_rebalance(CUAVLTree *tree, CUAVLTreeNode *S, CUAVLTreeNode *Q, CUAVLTreeNode *T)
 {
@@ -330,14 +331,246 @@ static CUAVLTreeNode *_cu_avl_tree_get_node_for_key(CUAVLTree *tree, void *key, 
 
     return NULL;
 }
+#endif
+
+/* Find the node for a given key and build the stack. */
+static
+CUAVLTreeNode *_cu_avl_tree_find_node_build_path(CUAVLTree *tree, void *key)
+{
+    CUAVLTreeNode *node = tree->root;
+    int rc;
+
+    _cu_avl_tree_node_stack_init(tree);
+
+    while (node) {
+        cu_fixed_pointer_stack_push(&tree->node_stack, node);
+        rc = tree->compare(key, node->key, tree->compare_data);
+        if (rc > 0) { /* key < node->key, walk left */
+            node = node->llink;
+        }
+        else if (rc < 0) { /* key > node->key, walk right */
+            node = node->rlink;
+        }
+        else
+            return node;
+    }
+
+    /* The key has not been found. On top of the stack is the potential parent node. */
+    return NULL;
+}
+
+/* Perform a left rotation on the subtree with root X. Return the new root of the subtree. */
+/* FIXME: We know that Z is the right child of X. We could also return the new root in the argument. */
+static
+CUAVLTreeNode *_cu_avl_tree_rotate_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
+{
+    /* Exchange X and Z */
+    X->rlink = Z->llink;
+    Z->llink = X;
+
+    /* Fix balance. */
+    if (Z->balance == 0) { /* Only after deletion. */
+        X->balance = BALANCE_LEAN_RIGHT;
+        Z->balance = BALANCE_LEAN_LEFT;
+    }
+    else {
+        X->balance = 0;
+        Z->balance = 0;
+    }
+
+    /* Z is the new root. */
+    return Z;
+}
+
+/* Perform a right rotation on the subtree with root X. Return the new root of the subtree. */
+/* FIXME: We know that Z is the left child of X. We could also return the new root in the argument. */
+static
+CUAVLTreeNode *_cu_avl_tree_rotate_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
+{
+    /* Exchange X and Z */
+    X->llink = Z->rlink;
+    Z->rlink = X;
+
+    /* Fix balance. */
+    if (Z->balance == 0) { /* Could happen only after deletion. */
+        X->balance = BALANCE_LEAN_LEFT;
+        Z->balance = BALANCE_LEAN_RIGHT;
+    }
+    else {
+        X->balance = 0;
+        Z->balance = 0;
+    }
+
+    /* Z is the new root. */
+    return Z;
+}
+
+/* Perform a right rotation on Z and a left rotation on X. */
+static
+CUAVLTreeNode *_cu_avl_tree_rotate_right_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
+{
+    CUAVLTreeNode *Y = Z->llink;
+    /* Right rotation around Z. */
+    Z->llink = Y->rlink;
+    Y->rlink = Z;
+    /* Left rotation around X. */
+    X->rlink = Y->llink;
+    Y->llink = X;
+
+    if (Y->balance == BALANCE_LEAN_LEFT) {
+        X->balance = 0;
+        Z->balance = BALANCE_LEAN_RIGHT;
+    }
+    else if (Y->balance == BALANCE_LEAN_RIGHT) {
+        X->balance = BALANCE_LEAN_LEFT;
+        Z->balance = 0;
+    }
+    else {
+        X->balance = 0;
+        Z->balance = 0;
+    }
+
+    Y->balance = 0;
+
+    return Y;
+}
+
+/* Perform a left rotation on Z and a right rotation on X. */
+static
+CUAVLTreeNode *_cu_avl_tree_rotate_left_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
+{
+    CUAVLTreeNode *Y = Z->rlink;
+    /* Left rotation around Z. */
+    Z->rlink = Y->llink;
+    Y->llink = Z;
+    /* Right rotation around X. */
+    X->llink = Y->rlink;
+    Y->rlink = X;
+
+    if (Y->balance == BALANCE_LEAN_RIGHT) {
+        X->balance = 0;
+        Z->balance = BALANCE_LEAN_LEFT;
+    }
+    else if (Y->balance == BALANCE_LEAN_LEFT) {
+        X->balance = BALANCE_LEAN_RIGHT;
+        Z->balance = 0;
+    }
+    else {
+        X->balance = 0;
+        Z->balance = 0;
+    }
+
+    Y->balance = 0;
+
+    return Y;
+}
 
 /* Insert a new element. */
 void cu_avl_tree_insert(CUAVLTree *tree,
                         void *key,
                         void *value)
 {
+#if 0
     CUAVLTreeNode *node = _cu_avl_tree_get_node_for_key(tree, key, true, true);
     node->value = value;
+#else
+    CUAVLTreeNode *X, *Z, *N, *R;
+    /* Find the matching node and build the path to it. */
+    Z = _cu_avl_tree_find_node_build_path(tree, key);
+    if (Z != NULL) {
+        /* The node was already in the tree. Free the key and original value and set the value. */
+        if (tree->destroy_key && Z->key != key)
+            tree->destroy_key(key);
+        if (tree->destroy_value && Z->value != value)
+            tree->destroy_value(Z->value);
+        Z->value = value; 
+        return;
+    }
+
+    /* The key was not found in the tree. The head of the stack contains the predecessor of the new node. */
+    Z = _cu_avl_tree_alloc(tree->node_mem);
+    memset(Z, 0, sizeof(CUAVLTreeNode));
+    Z->key = key;
+    Z->value = value;
+
+    X = cu_fixed_pointer_stack_peek(&tree->node_stack);
+    if (X != NULL) {
+        if (tree->compare(key, X->key, tree->compare_data) > 0) {
+            /* key < X->key, insert to the left. */
+            X->llink = Z;
+        }
+        else {
+            X->rlink = Z;
+        }
+    }
+    else {
+        /* There is no node in this tree, i.e., it was empty. Set Z as the new root, increase the height and return. */
+        tree->root = Z;
+        ++tree->height;
+        return;
+    }
+
+    /* Find deepest imbalanced node and correct balance on the path from the new node to this one. */
+    while (X != NULL && X->balance == 0) {
+        if (X->rlink == Z) {
+            X->balance = BALANCE_LEAN_RIGHT;
+        }
+        else {
+            X->balance = BALANCE_LEAN_LEFT;
+        }
+
+        Z = cu_fixed_pointer_stack_pop(&tree->node_stack);
+        X = cu_fixed_pointer_stack_peek(&tree->node_stack);
+    }
+
+    /* X is now the (former) deepest imbalanced node, on top of the stack. If X is zero, the height has been increased. */
+    if (X == NULL) {
+        ++tree->height;
+        return;
+    }
+
+    /* From here on, the balance of X is either LEFT or RIGHT. Otherwise, we would have continued the former loop
+     * up to the point that X == NULL.
+     */
+    if ((X->rlink == Z && X->balance == BALANCE_LEAN_LEFT) ||
+        (X->llink == Z && X->balance == BALANCE_LEAN_RIGHT)) {
+        /* This node has one leaf as a child on the opposite side of Z. Thus, this
+         * node is now fully balanced, and there is nothing more to do.
+         */
+        X->balance = 0;
+        return;
+    }
+
+    /* The imbalance has become too large, we have to apply rotations. However, the subtrees are
+     * the same size as they were before the insertion. So the overall height does not change.
+     */
+    if (X->rlink == Z && X->balance == BALANCE_LEAN_RIGHT) {
+        if (Z->balance == BALANCE_LEAN_LEFT)
+            N = _cu_avl_tree_rotate_right_left(X, Z);
+        else
+            N = _cu_avl_tree_rotate_left(X, Z);
+    }
+    else {
+        if (Z->balance == BALANCE_LEAN_RIGHT)
+            N = _cu_avl_tree_rotate_left_right(X, Z);
+        else
+            N = _cu_avl_tree_rotate_right(X, Z);
+    }
+
+    cu_fixed_pointer_stack_pop(&tree->node_stack);
+    R = cu_fixed_pointer_stack_peek(&tree->node_stack);
+    if (R != NULL) {
+        /* Place N instead of X on X’s parent node R. */
+        if (R->rlink == X)
+            R->rlink = N;
+        else
+            R->llink = N;
+    }
+    else {
+        /* N has become the new root of the whole tree. */
+        tree->root = N;
+    }
+#endif
 }
 
 /* Get an element. */
@@ -347,7 +580,7 @@ bool cu_avl_tree_find(CUAVLTree *tree,
 {
     if (cu_unlikely(!tree))
         return false;
-    CUAVLTreeNode *node = _cu_avl_tree_get_node_for_key(tree, key, false, false);
+    CUAVLTreeNode *node = _cu_avl_tree_find_node_build_path(tree, key);
     if (node) {
         if (data)
             *data = node->value;
