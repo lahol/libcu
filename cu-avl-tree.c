@@ -361,7 +361,7 @@ CUAVLTreeNode *_cu_avl_tree_find_node_build_path(CUAVLTree *tree, void *key)
 
 /* Perform a left rotation on the subtree with root X. Return the new root of the subtree. */
 /* FIXME: We know that Z is the right child of X. We could also return the new root in the argument. */
-static
+static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
     /* Exchange X and Z */
@@ -384,7 +384,7 @@ CUAVLTreeNode *_cu_avl_tree_rotate_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 
 /* Perform a right rotation on the subtree with root X. Return the new root of the subtree. */
 /* FIXME: We know that Z is the left child of X. We could also return the new root in the argument. */
-static
+static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
     /* Exchange X and Z */
@@ -406,7 +406,7 @@ CUAVLTreeNode *_cu_avl_tree_rotate_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 }
 
 /* Perform a right rotation on Z and a left rotation on X. */
-static
+static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_right_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
     CUAVLTreeNode *Y = Z->llink;
@@ -436,7 +436,7 @@ CUAVLTreeNode *_cu_avl_tree_rotate_right_left(CUAVLTreeNode *X, CUAVLTreeNode *Z
 }
 
 /* Perform a left rotation on Z and a right rotation on X. */
-static
+static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_left_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
     CUAVLTreeNode *Y = Z->rlink;
