@@ -19,7 +19,7 @@ int cmp_uint(void *a, void *b, void *data)
 static
 bool visit_node(void *key, void *value, void *nil)
 {
-    fprintf(stderr, "visit: %u\n", CU_POINTER_TO_UINT(key));
+/*    fprintf(stderr, "visit: %u\n", CU_POINTER_TO_UINT(key));*/
     return true;
 }
 
@@ -56,10 +56,12 @@ int main(int argc, char **argv)
 #endif
     CUAVLTree *btree = cu_avl_tree_new(NULL, NULL, NULL, NULL);
 
-#define TOTAL_COUNT 20
+#define TOTAL_COUNT 10
     uint32_t j, ins[TOTAL_COUNT];
-    for (j = 0; j < 20; ++j) {
-        ins[j] = (uint32_t)(rand() % 64);
+    uint32_t data[] = { 0x847a0, 0x8a4e0, 0x8f230, 0x93f60, 0x98c90,
+                        0x9d9c0, 0xa26f0, 0xa7420, 0xac150, 0xb0e90 };
+    for (j = 0; j < TOTAL_COUNT; ++j) {
+        ins[j] = data[j]; /*(uint32_t)(rand() % 64);*/
         fprintf(stderr, "insert: %u\n", ins[j]);
         cu_avl_tree_insert(btree, CU_UINT_TO_POINTER(ins[j]), CU_UINT_TO_POINTER(ins[j]));
 #ifdef DEBUG_BTREE_DOT
@@ -78,8 +80,8 @@ int main(int argc, char **argv)
 #endif
 
     uint32_t index;
-    for (j = 0; j < 100; ++j) {
-        index = (uint32_t)(rand() % TOTAL_COUNT);
+    for (j = 1; j <= 10; ++j) {
+        index = 10 - j; /*(uint32_t)(rand() % TOTAL_COUNT);*/
         fprintf(stderr, "remove: %u\n", ins[index]);
         if (cu_avl_tree_remove(btree, CU_UINT_TO_POINTER(ins[index]))) {
             fprintf(stderr, " -> removed\n");

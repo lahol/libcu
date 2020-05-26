@@ -123,6 +123,16 @@ void *cu_heap_peek_root(CUHeap *heap)
 
 void cu_heap_update(CUHeap *heap, uint32_t pos)
 {
-    if (pos < heap->length)
-        _cu_heap_reheap(heap, pos);
+    if (cu_unlikely(!heap || !heap->data || pos >= heap->length))
+        return;
+    _cu_heap_reheap(heap, pos);
+}
+
+void cu_heap_remove(CUHeap *heap, uint32_t pos)
+{
+    if (cu_unlikely(!heap || !heap->data || pos >= heap->length))
+        return;
+    _cu_heap_exchange_links(heap, pos, --heap->length);
+    /* Can happen in both directions, e.g., if we are in another subtree. */
+    _cu_heap_reheap(heap, pos);
 }

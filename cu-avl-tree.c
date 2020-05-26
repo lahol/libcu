@@ -202,6 +202,9 @@ CUAVLTreeNode *_cu_avl_tree_build_path_to_successor(CUAVLTree *tree, CUAVLTreeNo
 static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
+#ifdef DEBUG
+    fprintf(stderr, "rotate LEFT\n");
+#endif
     /* Exchange X and Z */
     X->rlink = Z->llink;
     Z->llink = X;
@@ -225,6 +228,9 @@ CUAVLTreeNode *_cu_avl_tree_rotate_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
+#ifdef DEBUG
+    fprintf(stderr, "rotate RIGHT\n");
+#endif
     /* Exchange X and Z */
     X->llink = Z->rlink;
     Z->rlink = X;
@@ -247,6 +253,9 @@ CUAVLTreeNode *_cu_avl_tree_rotate_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_right_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
+#ifdef DEBUG
+    fprintf(stderr, "rotate RIGHT LEFT\n");
+#endif
     CUAVLTreeNode *Y = Z->llink;
     /* Right rotation around Z. */
     Z->llink = Y->rlink;
@@ -277,6 +286,9 @@ CUAVLTreeNode *_cu_avl_tree_rotate_right_left(CUAVLTreeNode *X, CUAVLTreeNode *Z
 static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_left_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
+#ifdef DEBUG
+    fprintf(stderr, "rotate LEFT RIGHT\n");
+#endif
     CUAVLTreeNode *Y = Z->rlink;
     /* Left rotation around Z. */
     Z->rlink = Y->llink;
@@ -513,14 +525,15 @@ bool cu_avl_tree_remove(CUAVLTree *tree, void *key)
                     Z->llink = N;
                 else
                     Z->rlink = N;
-                /* If the node Z was balanced before, we caught the height change and we are done. */
-                if (balance == 0)
-                    return true;
             }
             else {
                 /* The loop will terminate in the next iteration. The total height was reduced by one. */
                 tree->root = N;
             }
+
+            /* If the node Z was balanced before, we caught the height change and we are done. */
+            if (balance == 0)
+                return true;
         }
     }
 
@@ -571,7 +584,7 @@ void cu_avl_tree_foreach(CUAVLTree *tree,
 
         node = (CUAVLTreeNode *)cu_fixed_pointer_stack_pop(&tree->node_stack);
 #ifdef DEBUG_BTREE_DOT
-        fprintf(stdout, "n%p [label=\"%u, bal: %u\"];\n", node, CU_POINTER_TO_UINT(node->key), node->balance);
+        fprintf(stdout, "n%p [label=\"%p, bal: %u\"];\n", node, node->key, node->balance);
         if (node->llink)
             fprintf(stdout, "n%p -> n%p [label=\"L\"];\n", node, node->llink);
         if (node->rlink)

@@ -7,6 +7,7 @@
 #include "cu.h"
 #include "cu-heap.h"
 #include "cu-avl-tree.h"
+#include "cu-list.h"      /* For release empty groups. */
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -149,15 +150,15 @@ void *_cu_fixed_size_memory_pool_group_new(CUFixedSizeMemoryPool *pool)
     return group;
 }
 
-#if 0
+/* Release the memory of the group. Only call this if group_free == group_size! */
 static
-void _cu_fixed_size_memory_pool_group_free(CUFixedSizeMemoryPool *pool, CUList *group_link)
+void _cu_fixed_size_memory_pool_group_free(CUFixedSizeMemoryPool *pool, void *group)
 {
-    cu_free(group_link->data);
-    pool->memory_groups = cu_list_delete_link(pool->memory_groups, group_link);
+    cu_heap_remove(&pool->free_memory, MEMORY_GROUP_HEADER_HEAP_POS(group));
     pool->total_free -= pool->group_size;
+    /* tree_remove also frees the memory from the group. */
+    cu_avl_tree_remove(pool->managed_memory, group);
 }
-#endif
 
 /* Create a new memory pool in which all elements have size element_size. The pool internally
  * will be group by blocks of group_size elements. Set this to 0 to get a reasonable default
@@ -196,6 +197,21 @@ CUFixedSizeMemoryPool *cu_fixed_size_memory_pool_new(size_t element_size, size_t
     return pool;
 }
 
+
+struct ReleaseGroupsData {
+    CUList *empty_groups;
+    CUFixedSizeMemoryPool *pool;
+};
+
+static
+bool _cu_fixed_size_memory_pool_enum_empty_groups(void *mem_key, void *mem_group, struct ReleaseGroupsData *data)
+{
+    if (MEMORY_GROUP_HEADER_NUM_FREE(mem_group) == data->pool->group_size) {
+        data->empty_groups = cu_list_prepend(data->empty_groups, mem_group);
+    }
+    return true;
+}
+
 /* If set, release memory of empty groups. */
 void cu_fixed_size_memory_pool_release_empty_groups(CUFixedSizeMemoryPool *pool, bool do_release)
 {
@@ -205,18 +221,17 @@ void cu_fixed_size_memory_pool_release_empty_groups(CUFixedSizeMemoryPool *pool,
 
     /* If set, release all empty groups. */
     if (do_release) {
-#if 0
-        CUList *link = pool->memory_groups;
-        CUList *next;
+        struct ReleaseGroupsData rdata = {
+            .empty_groups = NULL,
+            .pool = pool
+        };
+        /* Collect all empty groups. */
+        cu_avl_tree_foreach(pool->managed_memory, (CUTraverseFunc)_cu_fixed_size_memory_pool_enum_empty_groups, &rdata);
 
-        while (link) {
-            next = link->next;
-            if (MEMORY_GROUP_HEADER_NUM_FREE(link->data) == pool->group_size) {
-                _cu_fixed_size_memory_pool_group_free(pool, link);
-            }
-            link = next;
+        while (rdata.empty_groups) {
+            _cu_fixed_size_memory_pool_group_free(pool, rdata.empty_groups->data);
+            rdata.empty_groups = cu_list_delete_link(rdata.empty_groups, rdata.empty_groups);
         }
-#endif
     }
 }
 
@@ -327,7 +342,11 @@ bool cu_fixed_size_memory_pool_free(CUFixedSizeMemoryPool *pool, void *ptr)
             MEMORY_GROUP_HEADER_NUM_INIT(mem_group), MEMORY_GROUP_HEADER_HEAP_POS(mem_group));
 #endif
 
-    if (MEMORY_GROUP_HEADER_NUM_FREE(mem_group) > 1) {
+    if (pool->release_empty_groups && MEMORY_GROUP_HEADER_NUM_FREE(mem_group) == pool->group_size) {
+        /* Release the group. */
+        _cu_fixed_size_memory_pool_group_free(pool, mem_group);
+    }
+    else if (MEMORY_GROUP_HEADER_NUM_FREE(mem_group) > 1) {
         /* Group is already on the heap. Update its position. */
         cu_heap_update(&pool->free_memory, MEMORY_GROUP_HEADER_HEAP_POS(mem_group));
     }
