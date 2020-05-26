@@ -55,11 +55,13 @@ int main(int argc, char **argv)
     cu_heap_clear(&heap, NULL);
 #endif
     CUAVLTree *btree = cu_avl_tree_new(NULL, NULL, NULL, NULL);
-    uint32_t j, ins;
+
+#define TOTAL_COUNT 20
+    uint32_t j, ins[TOTAL_COUNT];
     for (j = 0; j < 20; ++j) {
-        ins = (uint32_t)(rand() % 64);
-        fprintf(stderr, "insert: %u\n", ins);
-        cu_avl_tree_insert(btree, CU_UINT_TO_POINTER(ins), CU_UINT_TO_POINTER(ins));
+        ins[j] = (uint32_t)(rand() % 64);
+        fprintf(stderr, "insert: %u\n", ins[j]);
+        cu_avl_tree_insert(btree, CU_UINT_TO_POINTER(ins[j]), CU_UINT_TO_POINTER(ins[j]));
 #ifdef DEBUG_BTREE_DOT
         fprintf(stdout, "digraph G%u {\n", j);
         cu_avl_tree_foreach(btree, (CUTraverseFunc)visit_node, NULL);
@@ -69,6 +71,28 @@ int main(int argc, char **argv)
 
 #ifdef DEBUG_BTREE_DOT
         fprintf(stdout, "digraph G%u {\n", j);
+#endif
+    cu_avl_tree_foreach(btree, (CUTraverseFunc)visit_node, NULL);
+#ifdef DEBUG_BTREE_DOT
+        fprintf(stdout, "}\n");
+#endif
+
+    uint32_t index;
+    for (j = 0; j < 100; ++j) {
+        index = (uint32_t)(rand() % TOTAL_COUNT);
+        fprintf(stderr, "remove: %u\n", ins[index]);
+        if (cu_avl_tree_remove(btree, CU_UINT_TO_POINTER(ins[index]))) {
+            fprintf(stderr, " -> removed\n");
+#ifdef DEBUG_BTREE_DOT
+            fprintf(stdout, "digraph G%u {\n", j + TOTAL_COUNT);
+            cu_avl_tree_foreach(btree, (CUTraverseFunc)visit_node, NULL);
+            fprintf(stdout, "}\n");
+#endif
+        }
+    }
+
+#ifdef DEBUG_BTREE_DOT
+        fprintf(stdout, "digraph G%u {\n", j + TOTAL_COUNT);
 #endif
     cu_avl_tree_foreach(btree, (CUTraverseFunc)visit_node, NULL);
 #ifdef DEBUG_BTREE_DOT
