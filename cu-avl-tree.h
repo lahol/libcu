@@ -32,6 +32,9 @@ void cu_avl_tree_insert(CUAVLTree *tree,
                         void *key,
                         void *value);
 
+/* Remove an element from the tree. Return true, if the element was in the tree. */
+bool cu_avl_tree_remove(CUAVLTree *tree, void *key);
+
 /* Get an element. */
 bool cu_avl_tree_find(CUAVLTree *tree,
                       void *key,
