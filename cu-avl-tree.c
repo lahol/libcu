@@ -527,7 +527,8 @@ bool cu_avl_tree_remove(CUAVLTree *tree, void *key)
                     Z->rlink = N;
             }
             else {
-                /* The loop will terminate in the next iteration. The total height was reduced by one. */
+                /* The loop will terminate in the next iteration. The total height was reduced by one,
+                 * unless balance of Z was 0. */
                 tree->root = N;
             }
 
