@@ -27,8 +27,17 @@ void cu_array_init(CUArray *array, CUType type, uint32_t length)
     }
 }
 
+CUArray *cu_array_new(CUType type, uint32_t length)
+{
+    CUArray *array = cu_alloc0(sizeof(CUArray));
+    cu_array_init(array, type, length);
+    return array;
+}
+
 void cu_array_copy(CUArray *dst, CUArray *src)
 {
+    if (dst == src)
+        return;
     if (dst && src) {
         cu_free(dst->data);
         dst->member_type = src->member_type;
@@ -45,12 +54,25 @@ void cu_array_copy(CUArray *dst, CUArray *src)
     }
 }
 
+CUArray *cu_array_dup(CUArray *array)
+{
+    CUArray *result = cu_alloc0(sizeof(CUArray));
+    cu_array_copy(result, array);
+    return result;
+}
+
 void cu_array_clear(CUArray *array)
 {
     if (array) {
         cu_free(array->data);
         memset(array, 0, sizeof(CUArray));
     }
+}
+
+void cu_array_free(CUArray *array)
+{
+    cu_array_clear(array);
+    cu_free(array);
 }
 
 void cu_array_set_value_u32(CUArray *array, uint32_t index, uint32_t value)

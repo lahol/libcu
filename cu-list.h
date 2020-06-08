@@ -49,3 +49,6 @@ CUList *cu_list_remove_custom(CUList *list, void *data, CUCompareFunc compare);
 
 /* Free the whole list. Call notify for each data element. */
 void cu_list_free_full(CUList *list, CUDestroyNotifyFunc notify);
+
+/* Call func for each element in the list. Stop if func returns false. */
+void cu_list_foreach(CUList *list, CUForeachFunc func, void *userdata);

@@ -1,5 +1,6 @@
 #include "cu-list.h"
 #include "cu-memory.h"
+#include "cu.h"
 
 CUList *cu_list_prepend(CUList *list, void *data)
 {
@@ -141,4 +142,15 @@ CUList *cu_list_remove_custom(CUList *list, void *data, CUCompareFunc compare)
 {
     CUList *llink = cu_list_find_custom(list, data, compare);
     return cu_list_delete_link(list, llink);
+}
+
+/* Call func for each element in the list. Stop if func returns false. */
+void cu_list_foreach(CUList *list, CUForeachFunc func, void *userdata)
+{
+    if (cu_unlikely(!func))
+        return;
+    for ( ; list; list = list->next) {
+        if (!func(list->data, userdata))
+            return;
+    }
 }

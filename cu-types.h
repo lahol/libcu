@@ -39,6 +39,9 @@ typedef struct {
     void *data;
 } CUArray;
 
+CUArray *cu_array_new(CUType type, uint32_t length);
+CUArray *cu_array_dup(CUArray *array);
+void cu_array_free(CUArray *array);
 void cu_array_init(CUArray *array, CUType type, uint32_t length);
 void cu_array_copy(CUArray *dst, CUArray *src);
 
