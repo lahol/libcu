@@ -56,6 +56,8 @@ void cu_array_copy(CUArray *dst, CUArray *src)
 
 CUArray *cu_array_dup(CUArray *array)
 {
+    if (!array)
+        return NULL;
     CUArray *result = cu_alloc0(sizeof(CUArray));
     cu_array_copy(result, array);
     return result;
