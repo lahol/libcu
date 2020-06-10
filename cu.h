@@ -4,8 +4,15 @@
 #include <cu-memory.h>
 #include <cu-list.h>
 #include <cu-queue.h>
+#include <cu-queue-fixed-size.h>
+#include <cu-queue-locked.h>
 #include <cu-stack.h>
 #include <cu-timer.h>
+#include <cu-avl-tree.h>
+#include <cu-fixed-stack.h>
+#include <cu-heap.h>
+#include <cu-mixed-heap-list.h>
+#include <cu-types.h>
 
 #if __WORDSIZE == 32
 #define CU_POINTER_TO_UINT(p) ((uint32_t)(p))
