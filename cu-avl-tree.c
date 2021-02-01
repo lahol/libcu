@@ -329,7 +329,7 @@ void cu_avl_tree_insert(CUAVLTree *tree,
             tree->destroy_key(key);
         if (tree->destroy_value && Z->value != value)
             tree->destroy_value(Z->value);
-        Z->value = value; 
+        Z->value = value;
         return;
     }
 

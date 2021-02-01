@@ -107,7 +107,7 @@ void *cu_heap_pop_root(CUHeap *heap)
 
     _cu_heap_exchange_links(heap, 0, --heap->length);
     _cu_heap_downheap(heap, 0);
-    
+
     if (heap->set_position_cb)
         heap->set_position_cb(data, (uint32_t)(-1), heap->set_position_cb_data);
 

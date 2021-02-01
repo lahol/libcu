@@ -21,7 +21,7 @@ libcu.so.1.0: $(cu_OBJ)
 
 bm-fixed-mem: bm-fixed-mem.o cu-list.o cu-memory.o cu-avl-tree.o cu-stack.o cu-heap.o cu-fixed-stack.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
-	
+
 test: test.o cu-heap.o cu-memory.o cu-list.o cu-avl-tree.o cu-stack.o cu-fixed-stack.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
