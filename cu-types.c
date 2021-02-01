@@ -198,60 +198,64 @@ static void _cu_blob_grow_if_needed(CUBlob *blob, size_t required)
 
 static size_t inline _cu_blob_write_uint32(CUBlob *blob, size_t offset, uint32_t *value)
 {
-    memcpy(blob->data + offset, value, 4);
-    return 4;
+    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_UINT]);
+    return _cu_element_sizes[CU_TYPE_UINT];
 }
 
 static size_t inline _cu_blob_write_uint64(CUBlob *blob, size_t offset, uint64_t *value)
 {
-    memcpy(blob->data + offset, value, 8);
-    return 8;
+    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_UINT64]);
+    return _cu_element_sizes[CU_TYPE_UINT64];
 }
 
 static size_t inline _cu_blob_write_int32(CUBlob *blob, size_t offset, int32_t *value)
 {
-    memcpy(blob->data + offset, value, 4);
-    return 4;
+    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_INT]);
+    return _cu_element_sizes[CU_TYPE_INT];
 }
 
 static size_t inline _cu_blob_write_int64(CUBlob *blob, size_t offset, int64_t *value)
 {
-    memcpy(blob->data + offset, value, 8);
-    return 8;
+    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_INT64]);
+    return _cu_element_sizes[CU_TYPE_INT64];
 }
 
 static size_t inline _cu_blob_write_double(CUBlob *blob, size_t offset, double *value)
 {
-    memcpy(blob->data + offset, value, 8);
-    return 8;
+    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_DOUBLE]);
+    return _cu_element_sizes[CU_TYPE_DOUBLE];
 }
 
 static size_t inline _cu_blob_write_pointer(CUBlob *blob, size_t offset, void *value)
 {
-    memcpy(blob->data + offset, &value, sizeof(void *));
-    return sizeof(void *);
+    memcpy(blob->data + offset, &value, _cu_element_sizes[CU_TYPE_POINTER]);
+    return _cu_element_sizes[CU_TYPE_POINTER];
 }
 
 static size_t inline _cu_blob_write_string(CUBlob *blob, size_t offset, uint32_t length, char *value)
 {
-    memcpy(blob->data + offset, &length, 4);
-    memcpy(blob->data + offset + 4, value, length);
+    memcpy(blob->data + offset, &length, _cu_element_sizes[CU_TYPE_UINT]);
+    memcpy(blob->data + offset + _cu_element_sizes[CU_TYPE_UINT], value, length);
 
     if (ROUND_TO_4(length) > length)
-        memset(blob->data + offset + 4 + length, 0, ROUND_TO_4(length) - length);
+        memset(blob->data + offset + _cu_element_sizes[CU_TYPE_UINT] + length,
+               0,
+               ROUND_TO_4(length) - length);
 
-    return (4 + ROUND_TO_4(length));
+    return (_cu_element_sizes[CU_TYPE_UINT] + ROUND_TO_4(length));
 }
 
 static size_t inline _cu_blob_write_array(CUBlob *blob, size_t offset, uint32_t length, uint32_t type, void *value)
 {
-    memcpy(blob->data + offset, &type, 4);
-    memcpy(blob->data + offset + 4, &length, 4);
-    memcpy(blob->data + offset + 8, value, length);
+    memcpy(blob->data + offset, &type, _cu_element_sizes[CU_TYPE_UINT]);
+    memcpy(blob->data + offset + _cu_element_sizes[CU_TYPE_UINT], &length, _cu_element_sizes[CU_TYPE_UINT]);
+    memcpy(blob->data + offset + 2 * _cu_element_sizes[CU_TYPE_UINT], value, length);
     if (ROUND_TO_4(length) - length)
-        memset(blob->data + offset + 8 + length, 0, ROUND_TO_4(length) - length);
+        memset(blob->data + offset + 2 * _cu_element_sizes[CU_TYPE_UINT] + length,
+               0,
+               ROUND_TO_4(length) - length);
 
-    return (8 + ROUND_TO_4(length));
+    return (2 * _cu_element_sizes[CU_TYPE_UINT] + ROUND_TO_4(length));
 }
 
 void cu_blob_append(CUBlob *blob, CUType type, void *value)
@@ -268,27 +272,27 @@ void cu_blob_append(CUBlob *blob, CUType type, void *value)
 
     switch (type) {
         case CU_TYPE_UINT:
-            _cu_blob_grow_if_needed(blob, 4);
+            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_UINT]);
             blob->used_size += _cu_blob_write_uint32(blob, entry->offset, value);
             break;
         case CU_TYPE_UINT64:
-            _cu_blob_grow_if_needed(blob, 8);
+            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_UINT64]);
             blob->used_size += _cu_blob_write_uint64(blob, entry->offset, value);
             break;
         case CU_TYPE_INT:
-            _cu_blob_grow_if_needed(blob, 4);
+            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_INT]);
             blob->used_size += _cu_blob_write_int32(blob, entry->offset, value);
             break;
         case CU_TYPE_INT64:
-            _cu_blob_grow_if_needed(blob, 8);
+            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_INT64]);
             blob->used_size += _cu_blob_write_int64(blob, entry->offset, value);
             break;
         case CU_TYPE_DOUBLE:
-            _cu_blob_grow_if_needed(blob, 8);
+            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_DOUBLE]);
             blob->used_size += _cu_blob_write_double(blob, entry->offset, value);
             break;
         case CU_TYPE_POINTER:
-            _cu_blob_grow_if_needed(blob, sizeof(void *));
+            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_POINTER]);
             blob->used_size += _cu_blob_write_pointer(blob, entry->offset, value);
             break;
         case CU_TYPE_STRING:
@@ -448,15 +452,15 @@ void cu_blob_deserialize(CUBlob *blob, char *buffer, size_t buflen)
                 blob->used_size += size;
                 break;
             case 's':
-                memcpy(&length, data, 4);
-                size = _cu_blob_write_string(blob, entry->offset, length, data + 4);
+                memcpy(&length, data, _cu_element_sizes[CU_TYPE_UINT]);
+                size = _cu_blob_write_string(blob, entry->offset, length, data + _cu_element_sizes[CU_TYPE_UINT]);
                 data += size;
                 blob->used_size += size;
                 break;
             case 'a':
-                memcpy(&type, data, 4);
-                memcpy(&length, data + 4, 4);
-                size = _cu_blob_write_array(blob, entry->offset, length, type, data + 8);
+                memcpy(&type, data, _cu_element_sizes[CU_TYPE_UINT]);
+                memcpy(&length, data + _cu_element_sizes[CU_TYPE_UINT], _cu_element_sizes[CU_TYPE_UINT]);
+                size = _cu_blob_write_array(blob, entry->offset, length, type, data + 2 * _cu_element_sizes[CU_TYPE_UINT]);
                 data += size;
                 blob->used_size += size;
                 break;
