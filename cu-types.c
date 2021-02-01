@@ -3,7 +3,7 @@
 #include <memory.h>
 #include "cu.h"
 
-static size_t _cu_element_sizes[] = {
+static const size_t _cu_element_sizes[] = {
     0, /* CU_TYPE_UNKNOWN */
     sizeof(uint32_t),
     sizeof(int32_t),
