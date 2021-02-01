@@ -196,41 +196,24 @@ static void _cu_blob_grow_if_needed(CUBlob *blob, size_t required)
     }
 }
 
-static size_t inline _cu_blob_write_uint32(CUBlob *blob, size_t offset, uint32_t *value)
+static size_t inline _cu_blob_write_value(CUBlob *blob, CUType value_type, size_t offset, void *value)
 {
-    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_UINT]);
-    return _cu_element_sizes[CU_TYPE_UINT];
-}
+    memcpy(blob->data + offset, value, _cu_element_sizes[value_type]);
+    return _cu_element_sizes[value_type];
+} 
 
-static size_t inline _cu_blob_write_uint64(CUBlob *blob, size_t offset, uint64_t *value)
-{
-    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_UINT64]);
-    return _cu_element_sizes[CU_TYPE_UINT64];
-}
-
-static size_t inline _cu_blob_write_int32(CUBlob *blob, size_t offset, int32_t *value)
-{
-    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_INT]);
-    return _cu_element_sizes[CU_TYPE_INT];
-}
-
-static size_t inline _cu_blob_write_int64(CUBlob *blob, size_t offset, int64_t *value)
-{
-    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_INT64]);
-    return _cu_element_sizes[CU_TYPE_INT64];
-}
-
-static size_t inline _cu_blob_write_double(CUBlob *blob, size_t offset, double *value)
-{
-    memcpy(blob->data + offset, value, _cu_element_sizes[CU_TYPE_DOUBLE]);
-    return _cu_element_sizes[CU_TYPE_DOUBLE];
-}
-
-static size_t inline _cu_blob_write_pointer(CUBlob *blob, size_t offset, void *value)
-{
-    memcpy(blob->data + offset, &value, _cu_element_sizes[CU_TYPE_POINTER]);
-    return _cu_element_sizes[CU_TYPE_POINTER];
-}
+#define _cu_blob_write_uint32(blob, offset, value)\
+    (_cu_blob_write_value((blob), CU_TYPE_UINT, (offset), (void *)(value)))
+#define _cu_blob_write_uint64(blob, offset, value)\
+    (_cu_blob_write_value((blob), CU_TYPE_UINT64, (offset), (void *)(value)))
+#define _cu_blob_write_int32(blob, offset, value)\
+    (_cu_blob_write_value((blob), CU_TYPE_INT, (offset), (void *)(value)))
+#define _cu_blob_write_int64(blob, offset, value)\
+    (_cu_blob_write_value((blob), CU_TYPE_INT64, (offset), (void *)(value)))
+#define _cu_blob_write_double(blob, offset, value)\
+    (_cu_blob_write_value((blob), CU_TYPE_DOUBLE, (offset), (void *)(value)))
+#define _cu_blob_write_pointer(blob, offset, value)\
+    (_cu_blob_write_value((blob), CU_TYPE_POINTER, (offset), (value)))
 
 static size_t inline _cu_blob_write_string(CUBlob *blob, size_t offset, uint32_t length, char *value)
 {
@@ -272,28 +255,13 @@ void cu_blob_append(CUBlob *blob, CUType type, void *value)
 
     switch (type) {
         case CU_TYPE_UINT:
-            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_UINT]);
-            blob->used_size += _cu_blob_write_uint32(blob, entry->offset, value);
-            break;
         case CU_TYPE_UINT64:
-            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_UINT64]);
-            blob->used_size += _cu_blob_write_uint64(blob, entry->offset, value);
-            break;
         case CU_TYPE_INT:
-            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_INT]);
-            blob->used_size += _cu_blob_write_int32(blob, entry->offset, value);
-            break;
         case CU_TYPE_INT64:
-            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_INT64]);
-            blob->used_size += _cu_blob_write_int64(blob, entry->offset, value);
-            break;
         case CU_TYPE_DOUBLE:
-            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_DOUBLE]);
-            blob->used_size += _cu_blob_write_double(blob, entry->offset, value);
-            break;
         case CU_TYPE_POINTER:
-            _cu_blob_grow_if_needed(blob, _cu_element_sizes[CU_TYPE_POINTER]);
-            blob->used_size += _cu_blob_write_pointer(blob, entry->offset, value);
+            _cu_blob_grow_if_needed(blob, _cu_element_sizes[type]);
+            blob->used_size += _cu_blob_write_value(blob, type, entry->offset, (void *)value);
             break;
         case CU_TYPE_STRING:
             /* 4 byte strlen + string, filled up to multiple of 4 */
