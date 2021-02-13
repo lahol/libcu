@@ -31,7 +31,6 @@ int main(int argc, char **argv)
         now = clock();
         fprintf(stdout, "alloc %" PRIu64 ": %fs\n", alloc_count, (double)(now - starttime)/CLOCKS_PER_SEC);
         starttime = now;
-        j = 0;
         while (list) {
             cu_fixed_size_memory_pool_free(pool, list->data);
             list = cu_list_delete_link(list, list);

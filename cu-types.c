@@ -161,7 +161,7 @@ typedef struct {
 } CUBlobEntry;
 
 #define CU_BLOB_CHUNK_POWER 8
-#define CU_BLOB_CHUNK_SIZE (1 << CU_BLOB_CHUNK_POWER) 
+#define CU_BLOB_CHUNK_SIZE (1 << CU_BLOB_CHUNK_POWER)
 #define CU_BLOB_ROUND_TO_CHUNK_SIZE(sz) ((((sz) + ((1 << CU_BLOB_CHUNK_POWER) - 1)) >> CU_BLOB_CHUNK_POWER) << CU_BLOB_CHUNK_POWER)
 
 struct _CUBlob {
@@ -200,7 +200,7 @@ static size_t inline _cu_blob_write_value(CUBlob *blob, CUType value_type, size_
 {
     memcpy(blob->data + offset, value, _cu_element_sizes[value_type]);
     return _cu_element_sizes[value_type];
-} 
+}
 
 #define _cu_blob_write_uint32(blob, offset, value)\
     (_cu_blob_write_value((blob), CU_TYPE_UINT, (offset), (void *)(value)))
@@ -346,7 +346,7 @@ size_t cu_blob_serialize(char **buffer, size_t buflen, CUBlob *blob)
     /* Actually, the data is already serialized. We just had to preserve the signature.
      * So, we just copy the rest of the data. */
     memcpy(*buffer + signature_length, blob->data, blob->used_size);
-    
+
     return buflen;
 
 error:

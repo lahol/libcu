@@ -77,7 +77,7 @@ void _cu_avl_tree_node_stack_init(CUAVLTree *tree)
 }
 
 /* Initialize a tree.
- * compare_data is passed as third argument to compare. 
+ * compare_data is passed as third argument to compare.
  * Option to use a fixed size memory pool or use classical alloc/free. */
 CUAVLTree *cu_avl_tree_new_full(CUCompareDataFunc compare,
                                 void *compare_data,
