@@ -5,21 +5,28 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-typedef struct _CUAVLTreeNode CUAVLTreeNode;
-struct _CUAVLTreeNode {
-    void *key;
-    void *value;
-    CUAVLTreeNode *llink;
-    CUAVLTreeNode *rlink;
-
-    uint8_t balance;
-};
-
-/* Balance is a 2-bit field, 10b means leaning left, 01b means leaning right, and 00b means
- * balanced.
+/** @brief Balance of a node.
+ *  @details Balance is a 2-bit field, 10b means leaning left, 01b means leaning right,
+ *           and 00b means balanced.
  */
-#define BALANCE_LEAN_LEFT    2
-#define BALANCE_LEAN_RIGHT   1
+typedef enum {
+    BALANCE_BALANCED = 0, /**< The left and right subtrees have the same height. */
+    BALANCE_LEAN_RIGHT = 1, /**< The right subtree has a height of one more than the left. */
+    BALANCE_LEAN_LEFT = 2 /**< The left subtree has a height of one more than the right. */
+} CUAVLTreeNodeBalance;
+
+typedef struct _CUAVLTreeNode CUAVLTreeNode;
+/** @internal
+ *  @brief A node in the tree.
+ */
+struct _CUAVLTreeNode {
+    void *key; /**< Pointer to the key of the node, unique in the tree. */
+    void *value; /**< Pointer to the value of the node. */
+    CUAVLTreeNode *llink; /**< Reference to the left node. */
+    CUAVLTreeNode *rlink; /**< Reference to the right node. */
+
+    CUAVLTreeNodeBalance balance;
+};
 
 struct _CUAVLTree {
     CUFixedSizeMemoryPool *node_mem;
@@ -39,7 +46,18 @@ struct _CUAVLTree {
     CUFixedStack node_stack;
 };
 
-static int _cu_avl_tree_compare_pointers(void *a, void *b, void *nil)
+/** @internal 
+ *  @brief Compare the raw pointer values.
+ *  @details Used as a fallback if no @a compare function is passed to cu_avl_tree_new().
+ *  @param[in] a The first value.
+ *  @param[in] b The second value.
+ *  @param[in] nil Unused.
+ *  @retval 1 The value of @a b is larger than @a a.
+ *  @retval 0 The values of @a a and @a b are the same.
+ *  @retval -1 The value of @a a is larger than @a b.
+ */
+static
+int _cu_avl_tree_compare_pointers(void *a, void *b, __attribute__((unused))void *nil)
 {
     if (a < b)
         return 1;
@@ -48,12 +66,24 @@ static int _cu_avl_tree_compare_pointers(void *a, void *b, void *nil)
     return 0;
 }
 
+/** @internal
+ *  @brief Wrapper to allocate memory for a single node.
+ *  @details If the tree was created with a fixd size memory pool, get the memory from there,
+ *           otherwise from cu_alloc.
+ *  @param[in] pool The memory pool of the tree, or @a NULL.
+ *  @return Pointer to a newly allocated node.
+ */
 static
 CUAVLTreeNode *_cu_avl_tree_alloc(CUFixedSizeMemoryPool *pool)
 {
     return (CUAVLTreeNode *)(pool ? cu_fixed_size_memory_pool_alloc(pool) : cu_alloc(sizeof(CUAVLTreeNode)));
 }
 
+/** @internal
+ *  @brief Wrapper to free memory of a node and return it to the pool, if present.
+ *  @param[in] pool The memory pool of the tree, or @a NULL.
+ *  @param[in] node The node to free.
+ */
 static
 void _cu_avl_tree_free(CUFixedSizeMemoryPool *pool, CUAVLTreeNode *node)
 {
@@ -63,6 +93,12 @@ void _cu_avl_tree_free(CUFixedSizeMemoryPool *pool, CUAVLTreeNode *node)
         cu_free(node);
 }
 
+/** @internal
+ *  @brief Initialize a stack for the tree, holding at most max height many nodes.
+ *  @details If the height of the tree is larger than the current stack, resize the stack,
+ *           otherwise just reset the present one.
+ *  @param[in] tree The tree for which we initialize the stack.
+ */
 static inline
 void _cu_avl_tree_node_stack_init(CUAVLTree *tree)
 {
@@ -76,9 +112,6 @@ void _cu_avl_tree_node_stack_init(CUAVLTree *tree)
     }
 }
 
-/* Initialize a tree.
- * compare_data is passed as third argument to compare.
- * Option to use a fixed size memory pool or use classical alloc/free. */
 CUAVLTree *cu_avl_tree_new_full(CUCompareDataFunc compare,
                                 void *compare_data,
                                 CUDestroyNotifyFunc destroy_key,
@@ -113,6 +146,12 @@ CUAVLTree *cu_avl_tree_new(CUCompareDataFunc compare,
     return cu_avl_tree_new_full(compare, compare_data, destroy_key, destroy_value, true);
 }
 
+/** @internal
+ *  @brief Clear a single node of the tree, freeing resources of key and value.
+ *  @param[in] key The key to free.
+ *  @param[in] value The value to free.
+ *  @param[in] tree The tree in which the node is a member of.
+ */
 void _cu_avl_tree_clear_node(void *key, void *value, CUAVLTree *tree)
 {
     if (tree->destroy_key)
@@ -121,7 +160,6 @@ void _cu_avl_tree_clear_node(void *key, void *value, CUAVLTree *tree)
         tree->destroy_value(value);
 }
 
-/* Clear the tree. */
 void cu_avl_tree_clear(CUAVLTree *tree)
 {
     if (cu_unlikely(!tree))
@@ -136,7 +174,6 @@ void cu_avl_tree_clear(CUAVLTree *tree)
     tree->root = NULL;
 }
 
-/* Destroy the tree. */
 void cu_avl_tree_destroy(CUAVLTree *tree)
 {
     if (cu_unlikely(!tree))
@@ -147,7 +184,12 @@ void cu_avl_tree_destroy(CUAVLTree *tree)
     cu_free(tree);
 }
 
-/* Find the node for a given key and build the stack. */
+/** @internal
+ *  @brief Find the node for a given key and build the stack.
+ *  @param[in] tree The tree in which we look for the key.
+ *  @param[in] key The key we look for.
+ *  @return Pointer to the node specified by @a key or @a NULL if not found.
+ */
 static
 CUAVLTreeNode *_cu_avl_tree_find_node_build_path(CUAVLTree *tree, void *key)
 {
@@ -173,7 +215,12 @@ CUAVLTreeNode *_cu_avl_tree_find_node_build_path(CUAVLTree *tree, void *key)
     return NULL;
 }
 
-/* Get rightmost child of left subtree. */
+/** @internal
+ *  @brief Get rightmost child of left subtree.
+ *  @param[in] tree The tree.
+ *  @param[in] node The node for which we search the predecessor.
+ *  @return Pointer to the direct predecessor node.
+ */
 static
 CUAVLTreeNode *_cu_avl_tree_build_path_to_predecessor(CUAVLTree *tree, CUAVLTreeNode *node)
 {
@@ -185,7 +232,12 @@ CUAVLTreeNode *_cu_avl_tree_build_path_to_predecessor(CUAVLTree *tree, CUAVLTree
     return cu_fixed_pointer_stack_peek(&tree->node_stack);
 }
 
-/* Get leftmost child of right subtree. */
+/** @internal
+ *  @brief Get leftmost child of right subtree.
+ *  @param[in] tree The tree.
+ *  @param[in] node The node for which we search the successor.
+ *  @return Pointer to the direct successor of the node.
+ */
 static
 CUAVLTreeNode *_cu_avl_tree_build_path_to_successor(CUAVLTree *tree, CUAVLTreeNode *node)
 {
@@ -197,7 +249,12 @@ CUAVLTreeNode *_cu_avl_tree_build_path_to_successor(CUAVLTree *tree, CUAVLTreeNo
     return cu_fixed_pointer_stack_peek(&tree->node_stack);
 }
 
-/* Perform a left rotation on the subtree with root X. Return the new root of the subtree. */
+/** @internal
+ *  @brief Perform a left rotation on the subtree with root X.
+ *  @param[in] X The root of the sub tree.
+ *  @param[in] Z The right child of @a X.
+ *  @return The new root of the subtree.
+ */
 /* FIXME: We know that Z is the right child of X. We could also return the new root in the argument. */
 static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
@@ -210,20 +267,25 @@ CUAVLTreeNode *_cu_avl_tree_rotate_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
     Z->llink = X;
 
     /* Fix balance. */
-    if (Z->balance == 0) { /* Only after deletion. */
+    if (Z->balance == BALANCE_BALANCED) { /* Only after deletion. */
         X->balance = BALANCE_LEAN_RIGHT;
         Z->balance = BALANCE_LEAN_LEFT;
     }
     else {
-        X->balance = 0;
-        Z->balance = 0;
+        X->balance = BALANCE_BALANCED;
+        Z->balance = BALANCE_BALANCED;
     }
 
     /* Z is the new root. */
     return Z;
 }
 
-/* Perform a right rotation on the subtree with root X. Return the new root of the subtree. */
+/** @internal
+ *  @brief Perform a right rotation on the subtree with root X.
+ *  @param[in] X The root of the sub tree.
+ *  @param[in] Z The left child of @a X.
+ *  @return The new root of the subtree.
+ */
 /* FIXME: We know that Z is the left child of X. We could also return the new root in the argument. */
 static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
@@ -236,20 +298,25 @@ CUAVLTreeNode *_cu_avl_tree_rotate_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
     Z->rlink = X;
 
     /* Fix balance. */
-    if (Z->balance == 0) { /* Could happen only after deletion. */
+    if (Z->balance == BALANCE_BALANCED) { /* Could happen only after deletion. */
         X->balance = BALANCE_LEAN_LEFT;
         Z->balance = BALANCE_LEAN_RIGHT;
     }
     else {
-        X->balance = 0;
-        Z->balance = 0;
+        X->balance = BALANCE_BALANCED;
+        Z->balance = BALANCE_BALANCED;
     }
 
     /* Z is the new root. */
     return Z;
 }
 
-/* Perform a right rotation on Z and a left rotation on X. */
+/** @internal
+ *  @brief Perform a right rotation on Z and a left rotation on X.
+ *  @param[in] X The root of the subtree.
+ *  @param[in] Z The right node of the subtree.
+ *  @return The new root of the subtree.
+ */
 static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_right_left(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
@@ -265,24 +332,29 @@ CUAVLTreeNode *_cu_avl_tree_rotate_right_left(CUAVLTreeNode *X, CUAVLTreeNode *Z
     Y->llink = X;
 
     if (Y->balance == BALANCE_LEAN_LEFT) {
-        X->balance = 0;
+        X->balance = BALANCE_BALANCED;
         Z->balance = BALANCE_LEAN_RIGHT;
     }
     else if (Y->balance == BALANCE_LEAN_RIGHT) {
         X->balance = BALANCE_LEAN_LEFT;
-        Z->balance = 0;
+        Z->balance = BALANCE_BALANCED;
     }
     else {
-        X->balance = 0;
-        Z->balance = 0;
+        X->balance = BALANCE_BALANCED;
+        Z->balance = BALANCE_BALANCED;
     }
 
-    Y->balance = 0;
+    Y->balance = BALANCE_BALANCED;
 
     return Y;
 }
 
-/* Perform a left rotation on Z and a right rotation on X. */
+/** @internal
+ *  @brief Perform a left rotation on Z and a right rotation on X.
+ *  @param[in] X The root of the subtree.
+ *  @param[in] Z The left node of the subtree.
+ *  @return The new root of the subtree.
+ */
 static inline
 CUAVLTreeNode *_cu_avl_tree_rotate_left_right(CUAVLTreeNode *X, CUAVLTreeNode *Z)
 {
@@ -298,24 +370,23 @@ CUAVLTreeNode *_cu_avl_tree_rotate_left_right(CUAVLTreeNode *X, CUAVLTreeNode *Z
     Y->rlink = X;
 
     if (Y->balance == BALANCE_LEAN_RIGHT) {
-        X->balance = 0;
+        X->balance = BALANCE_BALANCED;
         Z->balance = BALANCE_LEAN_LEFT;
     }
     else if (Y->balance == BALANCE_LEAN_LEFT) {
         X->balance = BALANCE_LEAN_RIGHT;
-        Z->balance = 0;
+        Z->balance = BALANCE_BALANCED;
     }
     else {
-        X->balance = 0;
-        Z->balance = 0;
+        X->balance = BALANCE_BALANCED;
+        Z->balance = BALANCE_BALANCED;
     }
 
-    Y->balance = 0;
+    Y->balance = BALANCE_BALANCED;
 
     return Y;
 }
 
-/* Insert a new element. */
 void cu_avl_tree_insert(CUAVLTree *tree,
                         void *key,
                         void *value)
@@ -357,7 +428,7 @@ void cu_avl_tree_insert(CUAVLTree *tree,
     }
 
     /* Find deepest imbalanced node and correct balance on the path from the new node to this one. */
-    while (X != NULL && X->balance == 0) {
+    while (X != NULL && X->balance == BALANCE_BALANCED) {
         if (X->rlink == Z) {
             X->balance = BALANCE_LEAN_RIGHT;
         }
@@ -383,7 +454,7 @@ void cu_avl_tree_insert(CUAVLTree *tree,
         /* This node has one leaf as a child on the opposite side of Z. Thus, this
          * node is now fully balanced, and there is nothing more to do.
          */
-        X->balance = 0;
+        X->balance = BALANCE_BALANCED;
         return;
     }
 
@@ -475,7 +546,7 @@ bool cu_avl_tree_remove(CUAVLTree *tree, void *key)
 
     uint8_t balance;
     while ((X = cu_fixed_pointer_stack_pop(&tree->node_stack)) != NULL) {
-        if (X->balance == 0) {
+        if (X->balance == BALANCE_BALANCED) {
             /* The subtree with root X has been balanced. The subtree with root N has reduced
              * its height, thus making the tree under X leaning left or right, but still in limits.
              * Everything upwards remains unchanged.
@@ -494,7 +565,7 @@ bool cu_avl_tree_remove(CUAVLTree *tree, void *key)
              * the node X is now balanced but its height also is smaller. We have to continue with
              * X’s parent.
              */
-            X->balance = 0;
+            X->balance = BALANCE_BALANCED;
             N = X;
         }
         else {
@@ -533,7 +604,7 @@ bool cu_avl_tree_remove(CUAVLTree *tree, void *key)
             }
 
             /* If the node Z was balanced before, we caught the height change and we are done. */
-            if (balance == 0)
+            if (balance == BALANCE_BALANCED)
                 return true;
         }
     }
@@ -544,7 +615,6 @@ bool cu_avl_tree_remove(CUAVLTree *tree, void *key)
     return true;
 }
 
-/* Get an element. */
 bool cu_avl_tree_find(CUAVLTree *tree,
                       void *key,
                       void **data)
@@ -560,9 +630,6 @@ bool cu_avl_tree_find(CUAVLTree *tree,
     return false;
 }
 
-/* Callback for each element in the tree. The tree is processed
- * in order.
- */
 void cu_avl_tree_foreach(CUAVLTree *tree,
                          CUTraverseFunc traverse,
                          void *userdata)
