@@ -3,16 +3,19 @@
 #include <memory.h>
 #include "cu.h"
 
+/** @internal
+ *  @brief Size of the element types.
+ */
 static const size_t _cu_element_sizes[] = {
-    0, /* CU_TYPE_UNKNOWN */
-    sizeof(uint32_t),
-    sizeof(int32_t),
-    sizeof(uint64_t),
-    sizeof(int64_t),
-    sizeof(double),
-    sizeof(void *),
-    sizeof(char),
-    sizeof(CUArray)
+    0, /* CU_TYPE_UNKNOWN */ /**< Size of unknown type. */
+    sizeof(uint32_t), /**< Size of unsigned 32 bit integer. */
+    sizeof(int32_t), /**< Size of signed 32 bit integer. */
+    sizeof(uint64_t), /**< Size of unsigned 64 bit integer. */
+    sizeof(int64_t), /**< Size of signed 64 bit integer. */
+    sizeof(double), /**< Size of double. */
+    sizeof(void *), /**< Size of a pointer. */
+    sizeof(char), /**< Size of a character of a string. */
+    sizeof(CUArray) /**< Size of an array. */
 };
 
 void cu_array_init(CUArray *array, CUType type, uint32_t length)
@@ -155,40 +158,62 @@ void *cu_array_get_value_pointer(CUArray *array, uint32_t index)
     return NULL;
 }
 
+/** @internal
+ *  @brief Descriptor of a single blob entry.
+ */
 typedef struct {
-    CUType type;
-    size_t offset;
+    CUType type; /**< The type of the element. */
+    size_t offset; /**< The offset in the data. */
 } CUBlobEntry;
 
+/** @internal 
+ *  @brief Power of the size of a blob chunk.
+ */
 #define CU_BLOB_CHUNK_POWER 8
+
+/** @internal
+ *  @brief Size of a blob chunk.
+ */
 #define CU_BLOB_CHUNK_SIZE (1 << CU_BLOB_CHUNK_POWER)
+
+/** @internal
+ *  @brief Round up to a multiple of chunk sizes.
+ *  @param[in] sz The actual size to round up.
+ */
 #define CU_BLOB_ROUND_TO_CHUNK_SIZE(sz) ((((sz) + ((1 << CU_BLOB_CHUNK_POWER) - 1)) >> CU_BLOB_CHUNK_POWER) << CU_BLOB_CHUNK_POWER)
 
+/** @internal
+ *  @brief The blob data.
+ */
 struct _CUBlob {
-    CUList *metadata; /* [CUBlobEntry], stored in reverse order */
-    uint32_t member_count;
-    size_t alloc_size;
-    size_t used_size;
-    void *data;
+    CUList *metadata; /**< Contains [CUBlobEntry] descriptors, stored in reverse order. */
+    uint32_t member_count; /**< Number of elements in the blob. */
+    size_t alloc_size; /**< Total size available in @a data. */
+    size_t used_size; /**< Size currently used of @a data. */
+    void *data; /**< Pointer to the memory used by the blob. */
 };
 
-void cu_blob_init(CUBlob *blob)
+CUBlob *cu_blob_new(void)
 {
-    if (blob) {
-        memset(blob, 0, sizeof(CUBlob));
-    }
+    return cu_alloc0(sizeof(CUBlob));
 }
 
-void cu_blob_clear(CUBlob *blob)
+void cu_blob_destroy(CUBlob *blob)
 {
     if (cu_unlikely(!blob))
         return;
     cu_list_free_full(blob->metadata, (CUDestroyNotifyFunc)cu_free);
     cu_free(blob->data);
-    memset(blob, 0, sizeof(CUBlob));
+    cu_free(blob);
 }
 
-static void _cu_blob_grow_if_needed(CUBlob *blob, size_t required)
+/** @internal
+ *  @brief Grow the blob if required to fit the data.
+ *  @param[in] blob The blob.
+ *  @param[in] required The required size.
+ */
+static
+void _cu_blob_grow_if_needed(CUBlob *blob, size_t required)
 {
     if (blob->used_size + required < blob->alloc_size) {
         blob->alloc_size = CU_BLOB_ROUND_TO_CHUNK_SIZE(blob->used_size + required);
@@ -196,7 +221,16 @@ static void _cu_blob_grow_if_needed(CUBlob *blob, size_t required)
     }
 }
 
-static size_t inline _cu_blob_write_value(CUBlob *blob, CUType value_type, size_t offset, void *value)
+/** @internal
+ *  @brief Write data to the blob.
+ *  @param[in] blob The blob to write the data to.
+ *  @param[in] value_type The type of the value.
+ *  @param[in] offset The offset in the data part of the blob.
+ *  @param[in] value The value to write.
+ *  @return The size written.
+ */
+static
+size_t inline _cu_blob_write_value(CUBlob *blob, CUType value_type, size_t offset, void *value)
 {
     memcpy(blob->data + offset, value, _cu_element_sizes[value_type]);
     return _cu_element_sizes[value_type];
@@ -215,7 +249,16 @@ static size_t inline _cu_blob_write_value(CUBlob *blob, CUType value_type, size_
 #define _cu_blob_write_pointer(blob, offset, value)\
     (_cu_blob_write_value((blob), CU_TYPE_POINTER, (offset), (value)))
 
-static size_t inline _cu_blob_write_string(CUBlob *blob, size_t offset, uint32_t length, char *value)
+/** @internal
+ *  @brief Write a string to a blob.
+ *  @param[in] blob The blob to write to.
+ *  @param[in] offset The offset in the data part of the blob.
+ *  @param[in] length The length of the string.
+ *  @param[in] value The string to write.
+ *  @return The number of bytes written.
+ */
+static
+size_t inline _cu_blob_write_string(CUBlob *blob, size_t offset, uint32_t length, char *value)
 {
     memcpy(blob->data + offset, &length, _cu_element_sizes[CU_TYPE_UINT]);
     memcpy(blob->data + offset + _cu_element_sizes[CU_TYPE_UINT], value, length);
@@ -228,6 +271,15 @@ static size_t inline _cu_blob_write_string(CUBlob *blob, size_t offset, uint32_t
     return (_cu_element_sizes[CU_TYPE_UINT] + ROUND_TO_4(length));
 }
 
+/** @internal
+ *  @brief Write an array to a blob.
+ *  @param[in] blob The blob to write to.
+ *  @param[in] offset The offset in the data part of the blob.
+ *  @param[in] length The length of the array data.
+ *  @param[in] type The type of the member values.
+ *  @param[in] value Pointer to the array data.
+ *  @return The number of bytes written, including padding.
+ */
 static size_t inline _cu_blob_write_array(CUBlob *blob, size_t offset, uint32_t length, uint32_t type, void *value)
 {
     memcpy(blob->data + offset, &type, _cu_element_sizes[CU_TYPE_UINT]);
