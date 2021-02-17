@@ -5,7 +5,7 @@ LIBS=-lpthread -lrt
 PREFIX := /usr
 
 cu_SRC_FULL := $(wildcard *.c)
-cu_SRC := $(filter-out bm-fixed-mem.c, $(cu_SRC_FULL))
+cu_SRC := $(filter-out bm-fixed-mem.c test.c, $(cu_SRC_FULL))
 cu_OBJ := $(cu_SRC:.c=.o)
 cu_HEADERS := $(wildcard *.h)
 
