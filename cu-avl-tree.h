@@ -1,9 +1,11 @@
-/* A balanced tree. */
+/** @file cu-avl-tree.h
+ *  Provide binary tree that is always balanced.
+ */
 #pragma once
 
 #include <cu-types.h>
 
-/** @brief Handle to a AVL tree.
+/** @brief Handle to an AVL tree.
  *  @details An AVL tree is a binary tree, that is always balanced.
  */
 typedef struct _CUAVLTree CUAVLTree;

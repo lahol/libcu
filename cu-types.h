@@ -1,3 +1,6 @@
+/** @file cu-types.h
+ *  General types, array wrapper, and structured, serialized data (blob) handler.
+ */
 #pragma once
 
 #include <stddef.h>
