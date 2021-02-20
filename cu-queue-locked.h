@@ -2,6 +2,8 @@
   * Generic double-ended queue with lock.
   * The implementation of the standard queue is used. We could do this also in the header.
   * however, we want to hide the ugly stuff from the user, so we repeat the declaration here.
+  * @defgroup CUQueueLocked Double ended queue handling locking on access.
+  * @{
   */
 #pragma once
 
@@ -85,3 +87,5 @@ void cu_queue_locked_delete_link(CUQueueLocked *queue, CUList *link);
  *  @param[in] userdata User-defined data to pass to the callback.
  */
 void cu_queue_locked_foreach(CUQueueLocked *queue, CUForeachFunc callback, void *userdata);
+
+/** @} */

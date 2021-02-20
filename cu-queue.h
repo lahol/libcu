@@ -1,5 +1,7 @@
 /** @file cu-queue.h
  *  Generic double-ended queue.
+ *  @defgroup CUQueue Double ended queue.
+ *  @{
  */
 #pragma once
 
@@ -80,3 +82,5 @@ void cu_queue_delete_link(CUQueue *queue, CUList *link);
  *  @param[in] userdata User-defined data to pass to the callback.
  */
 void cu_queue_foreach(CUQueue *queue, CUForeachFunc callback, void *userdata);
+
+/** @} */

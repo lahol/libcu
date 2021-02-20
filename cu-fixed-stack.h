@@ -1,5 +1,7 @@
 /** @file cu-fixed-stack.h
  *  Provide a stack of elements of a fixed size with a predefined maximal number of elements.
+ *  @defgroup CUFixedStack A stack of elements of fixed size with a fixed capacity.
+ *  @{
  */
 #pragma once
 
@@ -132,6 +134,8 @@ void *cu_fixed_stack_previous(CUFixedStack *stack, void *current);
  *  @return Pointer to the successor of @a current, or @a NULL if the element was the topmost element.
  */
 void *cu_fixed_stack_next(CUFixedStack *stack, void *current);
+
+/** @} */
 
 /** @defgroup FixedPointerStack Convenience wrappers for just keeping pointers on the stack.
  *  @{

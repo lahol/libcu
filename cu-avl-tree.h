@@ -1,5 +1,7 @@
 /** @file cu-avl-tree.h
  *  Provide binary tree that is always balanced.
+ *  @defgroup CUAVLTree AVL tree
+ *  @{
  */
 #pragma once
 
@@ -89,3 +91,5 @@ bool cu_avl_tree_find(CUAVLTree *tree,
 void cu_avl_tree_foreach(CUAVLTree *tree,
                          CUTraverseFunc traverse,
                          void *userdata);
+
+/** @} */

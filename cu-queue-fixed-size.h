@@ -3,6 +3,8 @@
  * Note that elements may become invalid after the next allocation.
  * The implementation of the standard queue is used. We could do this also in the header.
  * however, we want to hide the ugly stuff from the user, so we repeat the declaration here.
+ * @defgroup CUQueueFixedSize Double ended queue containing and handling elements of fixed size.
+ * @{
  */
 #pragma once
 
@@ -90,3 +92,5 @@ void cu_queue_fixed_size_delete_link(CUQueueFixedSize *queue, CUList *link);
  *  @param[in] userdata User-defined data to pass to the callback.
  */
 void cu_queue_fixed_size_foreach(CUQueueFixedSize *queue, CUForeachFunc callback, void *userdata);
+
+/** @} */
