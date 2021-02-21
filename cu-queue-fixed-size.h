@@ -1,4 +1,4 @@
-/** @file cu-queue.h
+/** @file cu-queue-fixed-size.h
  * Generic double-ended queue for fixed size elements, using the fixed size memory pool.
  * Note that elements may become invalid after the next allocation.
  * The implementation of the standard queue is used. We could do this also in the header.
